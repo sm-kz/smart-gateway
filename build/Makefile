@@ -176,6 +176,19 @@ camera_service/fast:
 .PHONY : camera_service/fast
 
 #=============================================================================
+# Target rules for targets named camera_client
+
+# Build rule for target.
+camera_client: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 camera_client
+.PHONY : camera_client
+
+# fast build rule for target.
+camera_client/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/camera_client.dir/build.make CMakeFiles/camera_client.dir/build
+.PHONY : camera_client/fast
+
+#=============================================================================
 # Target rules for targets named camera_ctl
 
 # Build rule for target.
@@ -187,6 +200,19 @@ camera_ctl: cmake_check_build_system
 camera_ctl/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/camera_ctl.dir/build.make CMakeFiles/camera_ctl.dir/build
 .PHONY : camera_ctl/fast
+
+#=============================================================================
+# Target rules for targets named camera_viewer
+
+# Build rule for target.
+camera_viewer: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 camera_viewer
+.PHONY : camera_viewer
+
+# fast build rule for target.
+camera_viewer/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/camera_viewer.dir/build.make CMakeFiles/camera_viewer.dir/build
+.PHONY : camera_viewer/fast
 
 #=============================================================================
 # Target rules for targets named send
@@ -224,6 +250,30 @@ lib/camera/camera.s: lib/camera/camera.c.s
 lib/camera/camera.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/camera.dir/build.make CMakeFiles/camera.dir/lib/camera/camera.c.s
 .PHONY : lib/camera/camera.c.s
+
+lib/camera_client/camera_client.o: lib/camera_client/camera_client.c.o
+.PHONY : lib/camera_client/camera_client.o
+
+# target to build an object file
+lib/camera_client/camera_client.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/camera_client.dir/build.make CMakeFiles/camera_client.dir/lib/camera_client/camera_client.c.o
+.PHONY : lib/camera_client/camera_client.c.o
+
+lib/camera_client/camera_client.i: lib/camera_client/camera_client.c.i
+.PHONY : lib/camera_client/camera_client.i
+
+# target to preprocess a source file
+lib/camera_client/camera_client.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/camera_client.dir/build.make CMakeFiles/camera_client.dir/lib/camera_client/camera_client.c.i
+.PHONY : lib/camera_client/camera_client.c.i
+
+lib/camera_client/camera_client.s: lib/camera_client/camera_client.c.s
+.PHONY : lib/camera_client/camera_client.s
+
+# target to generate assembly for a file
+lib/camera_client/camera_client.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/camera_client.dir/build.make CMakeFiles/camera_client.dir/lib/camera_client/camera_client.c.s
+.PHONY : lib/camera_client/camera_client.c.s
 
 lib/ipc/ipc_utils.o: lib/ipc/ipc_utils.c.o
 .PHONY : lib/ipc/ipc_utils.o
@@ -321,6 +371,30 @@ tools/camera_ctl.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/camera_ctl.dir/build.make CMakeFiles/camera_ctl.dir/tools/camera_ctl.c.s
 .PHONY : tools/camera_ctl.c.s
 
+tools/camera_viewer.o: tools/camera_viewer.c.o
+.PHONY : tools/camera_viewer.o
+
+# target to build an object file
+tools/camera_viewer.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/camera_viewer.dir/build.make CMakeFiles/camera_viewer.dir/tools/camera_viewer.c.o
+.PHONY : tools/camera_viewer.c.o
+
+tools/camera_viewer.i: tools/camera_viewer.c.i
+.PHONY : tools/camera_viewer.i
+
+# target to preprocess a source file
+tools/camera_viewer.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/camera_viewer.dir/build.make CMakeFiles/camera_viewer.dir/tools/camera_viewer.c.i
+.PHONY : tools/camera_viewer.c.i
+
+tools/camera_viewer.s: tools/camera_viewer.c.s
+.PHONY : tools/camera_viewer.s
+
+# target to generate assembly for a file
+tools/camera_viewer.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/camera_viewer.dir/build.make CMakeFiles/camera_viewer.dir/tools/camera_viewer.c.s
+.PHONY : tools/camera_viewer.c.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -332,13 +406,18 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... send"
 	@echo "... camera"
+	@echo "... camera_client"
 	@echo "... camera_ctl"
 	@echo "... camera_service"
+	@echo "... camera_viewer"
 	@echo "... ipc_utils"
 	@echo "... smart_gateway"
 	@echo "... lib/camera/camera.o"
 	@echo "... lib/camera/camera.i"
 	@echo "... lib/camera/camera.s"
+	@echo "... lib/camera_client/camera_client.o"
+	@echo "... lib/camera_client/camera_client.i"
+	@echo "... lib/camera_client/camera_client.s"
 	@echo "... lib/ipc/ipc_utils.o"
 	@echo "... lib/ipc/ipc_utils.i"
 	@echo "... lib/ipc/ipc_utils.s"
@@ -351,6 +430,9 @@ help:
 	@echo "... tools/camera_ctl.o"
 	@echo "... tools/camera_ctl.i"
 	@echo "... tools/camera_ctl.s"
+	@echo "... tools/camera_viewer.o"
+	@echo "... tools/camera_viewer.i"
+	@echo "... tools/camera_viewer.s"
 .PHONY : help
 
 

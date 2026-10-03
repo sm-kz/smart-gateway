@@ -46,7 +46,7 @@ int camera_open(struct camera *camera) {
     sprintf(devname, "/dev/video%d", camera->index);
     camera->fd = open(devname, O_RDWR | O_NONBLOCK);
     if (camera->fd < 0) {
-        perror("open video device");
+        perror("[Camera] open");
         return -1;
     }
 
@@ -347,10 +347,9 @@ int camera_dequeue(struct camera *camera) {
 int camera_close(struct camera *camera) {
     if (camera->state == CLOSED)
         return 0;
-    if (camera->state == STREAMING) {
-        fprintf(stderr, "[Camera] Error: attempt to close camera when streaming\r\n");
-        return -1;
-    }
+        
+    if (camera->state == STREAMING)
+        camera_stream_off(camera);
 
     if (camera->buffers) {
         int i;
@@ -384,13 +383,13 @@ int camera_shm_create(struct camera *camera) {
     int shm_size;
     camera->shm_fd = shm_open(SHM_PATH, O_RDWR | O_CREAT, 0666);
     if (camera->shm_fd < 0) {
-        perror("[Camera] Error: shm_open");
+        perror("[Camera] shm_open");
         return -1;
     }
 
     shm_size = sizeof(struct camera_frame_header) + camera->bytesperline * camera->height * 2;  // 双缓冲
     if (ftruncate(camera->shm_fd, shm_size) < 0) {
-        perror("[Camera] Error: ftruncate");
+        perror("[Camera] ftruncate");
         goto error;
     }
 
@@ -398,9 +397,21 @@ int camera_shm_create(struct camera *camera) {
                   PROT_WRITE | PROT_READ,
                   MAP_SHARED, camera->shm_fd, 0);
     if (camera->shm_mm == MAP_FAILED) {
-        perror("[Camera] Error: mmap");
+        perror("[Camera] mmap");
         goto error;
     }
+
+    // 初始化共享内存数据头
+    struct camera_frame *shared = camera->shm_mm;
+    shared->header.magic = CAMERA_MAGIC;
+    shared->header.width = camera->width;
+    shared->header.height = camera->height;
+    shared->header.pixelformat = camera->pixelformat;
+    shared->header.bytesperline = camera->bytesperline;
+    shared->header.frame_size = camera->buffers[0].size;
+    shared->header.frame_count = 2;     // 双缓冲
+    shared->header.frame_active = 0;
+    shared->header.sequence = 0;
 
     return 0;
 

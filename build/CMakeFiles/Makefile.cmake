@@ -66,6 +66,8 @@ set(CMAKE_DEPEND_INFO_FILES
   "CMakeFiles/ipc_utils.dir/DependInfo.cmake"
   "CMakeFiles/camera.dir/DependInfo.cmake"
   "CMakeFiles/camera_service.dir/DependInfo.cmake"
+  "CMakeFiles/camera_client.dir/DependInfo.cmake"
   "CMakeFiles/camera_ctl.dir/DependInfo.cmake"
+  "CMakeFiles/camera_viewer.dir/DependInfo.cmake"
   "CMakeFiles/send.dir/DependInfo.cmake"
   )

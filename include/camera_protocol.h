@@ -45,8 +45,8 @@ struct camera_frame_header {
     __u32 bytesperline;
 
     __u32 frame_size;
-    __u32 frame_count;
-    __u32 frame_active;
+    __u16 frame_count;
+    __u16 frame_active;
     __u32 sequence;
 };
 

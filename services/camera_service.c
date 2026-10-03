@@ -37,26 +37,9 @@ void *camera_service_routine (void *arg) {
 
     shared = camera->shm_mm;
 
-    // 初始化共享内存数据头
-    shared->header.magic = CAMERA_MAGIC;
-    shared->header.width = camera->width;
-    shared->header.height = camera->height;
-    shared->header.pixelformat = camera->pixelformat;
-    shared->header.bytesperline = camera->bytesperline;
-    shared->header.frame_size = camera->buffers[0].size;
-    shared->header.frame_count = 2;     // 双缓冲
-    shared->header.frame_active = 0;
-    shared->header.sequence = 0;
-
     struct pollfd pfd = {0};
     pfd.fd = camera->fd;
     pfd.events = POLLIN;
-
-    int fd;
-    unsigned char *fb;
-    fd = open("/dev/fb0", O_RDWR);
-    fb = mmap(NULL, camera->bytesperline * camera->height,
-        PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
     while(camera_service_status == CAMERA_SERVICE_STREAMING) {
         if (poll(&pfd, 1, 200) <= 0) {
@@ -78,22 +61,16 @@ void *camera_service_routine (void *arg) {
         }
 
         /* 帧处理流程 */
+        memcpy(&shared->data[(!shared->header.frame_active) * shared->header.frame_size], 
+            camera->buffers[index].start, camera->buffers[index].size);
+
         shared->header.sequence++;
         shared->header.frame_active = !shared->header.frame_active;
-        
-        memcpy(&shared->data[shared->header.frame_active * shared->header.frame_size], 
-            camera->buffers[index].start, camera->buffers[index].size);
-        memcpy(fb, &shared->data[shared->header.frame_active * shared->header.frame_size], 
-            camera->buffers[index].size);
 
         camera_queue(camera);
     }
 
-    munmap(fb, camera->bytesperline * camera->height);
-
-
 exit:
-    close(fd);
     pthread_exit(NULL);
 }
 
@@ -154,7 +131,6 @@ int main(int argc, char **argv) {
     if (camera_shm_create(&camera) < 0)
         goto error2;
     
-
     int client_fd;
     pthread_t stream_thread;
 

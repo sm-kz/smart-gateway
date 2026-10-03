@@ -73,6 +73,7 @@ CMakeFiles/send: camera_ctl
 	sudo cp /home/rance/Projects/smart_gateway/build/smart_gateway /home/rance/linux/nfs/rootfs/home/menoa/
 	sudo cp /home/rance/Projects/smart_gateway/build/camera_service /home/rance/linux/nfs/rootfs/home/menoa/
 	sudo cp /home/rance/Projects/smart_gateway/build/camera_ctl /home/rance/linux/nfs/rootfs/home/menoa/
+	sudo cp /home/rance/Projects/smart_gateway/build/camera_viewer /home/rance/linux/nfs/rootfs/home/menoa/
 
 CMakeFiles/send.dir/codegen:
 .PHONY : CMakeFiles/send.dir/codegen
