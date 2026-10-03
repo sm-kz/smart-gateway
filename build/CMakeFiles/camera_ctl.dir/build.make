@@ -95,6 +95,7 @@ camera_ctl_EXTERNAL_OBJECTS =
 
 camera_ctl: CMakeFiles/camera_ctl.dir/tools/camera_ctl.c.o
 camera_ctl: CMakeFiles/camera_ctl.dir/build.make
+camera_ctl: libipc_utils.a
 camera_ctl: CMakeFiles/camera_ctl.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking C executable camera_ctl"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/camera_ctl.dir/link.txt --verbose=$(VERBOSE)

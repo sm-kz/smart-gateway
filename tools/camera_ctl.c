@@ -1,4 +1,6 @@
-#include "camera_protocal.h"
+#include "camera_protocol.h"
+#include "ipc_utils.h"
+
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
@@ -51,7 +53,7 @@ int main(int argc, char **argv) {
     else
         req.command = 0;
 
-    if (send(client_fd, &req, sizeof(req), 0) < 0) {
+    if (send_all(client_fd, &req, sizeof(req)) < 0) {
         perror("send");
         return -1;
     }
@@ -67,7 +69,7 @@ int main(int argc, char **argv) {
 
     struct camera_response resp = {0};
     if (pfd.revents & POLLIN) {
-        if (recv(client_fd, &resp, sizeof(resp), 0) == sizeof(resp)) {
+        if (recv_all(client_fd, &resp, sizeof(resp)) == sizeof(resp)) {
             printf("[response]\r\n"\
                    "magic: %#x\r\n"\
                    "version: %d\r\n"\

@@ -36,6 +36,25 @@ struct camera_response {
     } data;
 };
 
+struct camera_frame_header {
+    __u32 magic;
+
+    __u32 width;
+    __u32 height;
+    __u32 pixelformat;
+    __u32 bytesperline;
+
+    __u32 frame_size;
+    __u32 frame_count;
+    __u32 frame_active;
+    __u32 sequence;
+};
+
+struct camera_frame {
+    struct camera_frame_header header;
+    __u8 data[];
+};
+
 enum camera_service_state {
     CAMERA_SERVICE_READY = 0,
     CAMERA_SERVICE_STREAMING

@@ -3,7 +3,9 @@
 
 #include <linux/videodev2.h>
 
-#define PIXEL_FMT_RGB565  V4L2_PIX_FMT_RGB565
+#define PIXEL_FMT_RGB565    V4L2_PIX_FMT_RGB565
+
+#define SHM_PATH            "/camera_frame"
 
 struct camera_buffer {
     void *start;
@@ -29,6 +31,9 @@ struct camera {
 
     enum camera_state state;
     int pending_buffer;
+
+    int shm_fd;
+    void *shm_mm;
 };
 
 void camera_init(struct camera *camera);
@@ -45,5 +50,8 @@ int camera_stream_off(struct camera *camera);
 int camera_queue(struct camera *camera);
 int camera_dequeue(struct camera *camera);
 int camera_close(struct camera *camera);
+
+int camera_shm_create(struct camera *camera);
+int camera_shm_destroy(struct camera *camera);
 
 #endif

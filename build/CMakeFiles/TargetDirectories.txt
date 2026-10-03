@@ -1,4 +1,5 @@
 /home/rance/Projects/smart_gateway/build/CMakeFiles/smart_gateway.dir
+/home/rance/Projects/smart_gateway/build/CMakeFiles/ipc_utils.dir
 /home/rance/Projects/smart_gateway/build/CMakeFiles/camera.dir
 /home/rance/Projects/smart_gateway/build/CMakeFiles/camera_service.dir
 /home/rance/Projects/smart_gateway/build/CMakeFiles/camera_ctl.dir

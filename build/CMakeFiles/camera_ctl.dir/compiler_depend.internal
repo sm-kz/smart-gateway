@@ -3,7 +3,8 @@
 
 CMakeFiles/camera_ctl.dir/tools/camera_ctl.c.o
  /home/rance/Projects/smart_gateway/tools/camera_ctl.c
- /home/rance/Projects/smart_gateway/include/camera_protocal.h
+ /home/rance/Projects/smart_gateway/include/camera_protocol.h
+ /home/rance/Projects/smart_gateway/include/ipc_utils.h
  /usr/local/arm/gcc-linaro-4.9.4-2017.01-x86_64_arm-linux-gnueabihf/arm-linux-gnueabihf/libc/usr/include/_G_config.h
  /usr/local/arm/gcc-linaro-4.9.4-2017.01-x86_64_arm-linux-gnueabihf/arm-linux-gnueabihf/libc/usr/include/asm-generic/bitsperlong.h
  /usr/local/arm/gcc-linaro-4.9.4-2017.01-x86_64_arm-linux-gnueabihf/arm-linux-gnueabihf/libc/usr/include/asm-generic/int-ll64.h

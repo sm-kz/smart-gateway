@@ -1,4 +1,6 @@
 #include "camera.h"
+#include "camera_protocol.h"
+
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -22,6 +24,9 @@ void camera_init(struct camera *camera) {
     camera->height = 480;
     camera->pixelformat = PIXEL_FMT_RGB565;
     camera->pending_buffer = -1;
+
+    camera->shm_fd = -1;
+    camera->shm_mm = NULL;
 }
 
 /**
@@ -363,6 +368,65 @@ int camera_close(struct camera *camera) {
     camera->fd = -1;
     camera->pending_buffer = -1;
     camera->state = CLOSED;
+
+    return 0;
+}
+
+/**
+ * 创建共享内存 
+ */
+int camera_shm_create(struct camera *camera) {
+    if (camera->shm_fd != -1) {
+        fprintf(stderr, "[Camera] Aborted: shm cannot be double created\r\n");
+        return -1;
+    }
+
+    int shm_size;
+    camera->shm_fd = shm_open(SHM_PATH, O_RDWR | O_CREAT, 0666);
+    if (camera->shm_fd < 0) {
+        perror("[Camera] Error: shm_open");
+        return -1;
+    }
+
+    shm_size = sizeof(struct camera_frame_header) + camera->bytesperline * camera->height * 2;  // 双缓冲
+    if (ftruncate(camera->shm_fd, shm_size) < 0) {
+        perror("[Camera] Error: ftruncate");
+        goto error;
+    }
+
+    camera->shm_mm = mmap(NULL, shm_size, 
+                  PROT_WRITE | PROT_READ,
+                  MAP_SHARED, camera->shm_fd, 0);
+    if (camera->shm_mm == MAP_FAILED) {
+        perror("[Camera] Error: mmap");
+        goto error;
+    }
+
+    return 0;
+
+error:
+    close(camera->shm_fd);
+    camera->shm_fd = -1;
+    shm_unlink(SHM_PATH);
+    return -1;
+}
+
+/**
+ * 销毁共享内存
+ */
+int camera_shm_destroy(struct camera *camera) {
+    if (camera->shm_fd == -1) {
+        fprintf(stderr, "[Camera] Aborted: shm cannot be double destroyed\r\n");
+        return -1;
+    }
+
+    munmap(camera->shm_mm, 
+        sizeof(struct camera_frame_header) + camera->bytesperline * camera->height);
+
+    close(camera->shm_fd);
+    camera->shm_fd = -1;
+    shm_unlink(SHM_PATH);
+    camera->shm_mm = NULL;
 
     return 0;
 }

@@ -137,6 +137,19 @@ smart_gateway/fast:
 .PHONY : smart_gateway/fast
 
 #=============================================================================
+# Target rules for targets named ipc_utils
+
+# Build rule for target.
+ipc_utils: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ipc_utils
+.PHONY : ipc_utils
+
+# fast build rule for target.
+ipc_utils/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ipc_utils.dir/build.make CMakeFiles/ipc_utils.dir/build
+.PHONY : ipc_utils/fast
+
+#=============================================================================
 # Target rules for targets named camera
 
 # Build rule for target.
@@ -211,6 +224,30 @@ lib/camera/camera.s: lib/camera/camera.c.s
 lib/camera/camera.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/camera.dir/build.make CMakeFiles/camera.dir/lib/camera/camera.c.s
 .PHONY : lib/camera/camera.c.s
+
+lib/ipc/ipc_utils.o: lib/ipc/ipc_utils.c.o
+.PHONY : lib/ipc/ipc_utils.o
+
+# target to build an object file
+lib/ipc/ipc_utils.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ipc_utils.dir/build.make CMakeFiles/ipc_utils.dir/lib/ipc/ipc_utils.c.o
+.PHONY : lib/ipc/ipc_utils.c.o
+
+lib/ipc/ipc_utils.i: lib/ipc/ipc_utils.c.i
+.PHONY : lib/ipc/ipc_utils.i
+
+# target to preprocess a source file
+lib/ipc/ipc_utils.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ipc_utils.dir/build.make CMakeFiles/ipc_utils.dir/lib/ipc/ipc_utils.c.i
+.PHONY : lib/ipc/ipc_utils.c.i
+
+lib/ipc/ipc_utils.s: lib/ipc/ipc_utils.c.s
+.PHONY : lib/ipc/ipc_utils.s
+
+# target to generate assembly for a file
+lib/ipc/ipc_utils.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ipc_utils.dir/build.make CMakeFiles/ipc_utils.dir/lib/ipc/ipc_utils.c.s
+.PHONY : lib/ipc/ipc_utils.c.s
 
 services/camera_service.o: services/camera_service.c.o
 .PHONY : services/camera_service.o
@@ -297,10 +334,14 @@ help:
 	@echo "... camera"
 	@echo "... camera_ctl"
 	@echo "... camera_service"
+	@echo "... ipc_utils"
 	@echo "... smart_gateway"
 	@echo "... lib/camera/camera.o"
 	@echo "... lib/camera/camera.i"
 	@echo "... lib/camera/camera.s"
+	@echo "... lib/ipc/ipc_utils.o"
+	@echo "... lib/ipc/ipc_utils.i"
+	@echo "... lib/ipc/ipc_utils.s"
 	@echo "... services/camera_service.o"
 	@echo "... services/camera_service.i"
 	@echo "... services/camera_service.s"
