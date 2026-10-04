@@ -215,6 +215,19 @@ camera_viewer/fast:
 .PHONY : camera_viewer/fast
 
 #=============================================================================
+# Target rules for targets named web_service
+
+# Build rule for target.
+web_service: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 web_service
+.PHONY : web_service
+
+# fast build rule for target.
+web_service/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/web_service.dir/build.make CMakeFiles/web_service.dir/build
+.PHONY : web_service/fast
+
+#=============================================================================
 # Target rules for targets named send
 
 # Build rule for target.
@@ -323,6 +336,30 @@ services/camera_service.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/camera_service.dir/build.make CMakeFiles/camera_service.dir/services/camera_service.c.s
 .PHONY : services/camera_service.c.s
 
+services/web_service.o: services/web_service.c.o
+.PHONY : services/web_service.o
+
+# target to build an object file
+services/web_service.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/web_service.dir/build.make CMakeFiles/web_service.dir/services/web_service.c.o
+.PHONY : services/web_service.c.o
+
+services/web_service.i: services/web_service.c.i
+.PHONY : services/web_service.i
+
+# target to preprocess a source file
+services/web_service.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/web_service.dir/build.make CMakeFiles/web_service.dir/services/web_service.c.i
+.PHONY : services/web_service.c.i
+
+services/web_service.s: services/web_service.c.s
+.PHONY : services/web_service.s
+
+# target to generate assembly for a file
+services/web_service.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/web_service.dir/build.make CMakeFiles/web_service.dir/services/web_service.c.s
+.PHONY : services/web_service.c.s
+
 src/main.o: src/main.c.o
 .PHONY : src/main.o
 
@@ -412,6 +449,7 @@ help:
 	@echo "... camera_viewer"
 	@echo "... ipc_utils"
 	@echo "... smart_gateway"
+	@echo "... web_service"
 	@echo "... lib/camera/camera.o"
 	@echo "... lib/camera/camera.i"
 	@echo "... lib/camera/camera.s"
@@ -424,6 +462,9 @@ help:
 	@echo "... services/camera_service.o"
 	@echo "... services/camera_service.i"
 	@echo "... services/camera_service.s"
+	@echo "... services/web_service.o"
+	@echo "... services/web_service.i"
+	@echo "... services/web_service.s"
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"

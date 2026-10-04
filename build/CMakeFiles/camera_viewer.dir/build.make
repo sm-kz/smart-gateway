@@ -96,6 +96,7 @@ camera_viewer_EXTERNAL_OBJECTS =
 camera_viewer: CMakeFiles/camera_viewer.dir/tools/camera_viewer.c.o
 camera_viewer: CMakeFiles/camera_viewer.dir/build.make
 camera_viewer: libcamera_client.a
+camera_viewer: libipc_utils.a
 camera_viewer: CMakeFiles/camera_viewer.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking C executable camera_viewer"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/camera_viewer.dir/link.txt --verbose=$(VERBOSE)

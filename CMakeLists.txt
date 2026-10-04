@@ -45,11 +45,12 @@ target_link_libraries(camera PRIVATE rt)
 
 # camera_service 服务程序
 add_executable(camera_service ${PROJECT_SOURCE_DIR}/services/camera_service.c)
-target_link_libraries(camera_service ipc_utils camera Threads::Threads)
+target_link_libraries(camera_service PRIVATE ipc_utils camera Threads::Threads)
 
 # camera_client 库
 add_library(camera_client STATIC ${PROJECT_SOURCE_DIR}/lib/camera_client/camera_client.c)
 target_include_directories(camera_client PUBLIC ${PROJECT_SOURCE_DIR}/include)
+target_link_libraries(camera_client PRIVATE ipc_utils)
 
 # camera_ctl 调试程序
 add_executable(camera_ctl ${PROJECT_SOURCE_DIR}/tools/camera_ctl.c)
@@ -61,6 +62,10 @@ add_executable(camera_viewer ${PROJECT_SOURCE_DIR}/tools/camera_viewer.c)
 target_include_directories(camera_viewer PRIVATE ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(camera_viewer PRIVATE camera_client rt)
 
+# web_service 程序
+add_executable(web_service ${PROJECT_SOURCE_DIR}/services/web_service.c)
+target_link_libraries(web_service PRIVATE camera ipc_utils camera_client)
+
 set(BOARD_HOME /home/rance/linux/nfs/rootfs/home/menoa)
 add_custom_target(send
                 DEPENDS ${APP} camera_service camera_ctl
@@ -71,6 +76,8 @@ add_custom_target(send
                 COMMAND sudo cp $<TARGET_FILE:camera_ctl>
                         ${BOARD_HOME}/
                 COMMAND sudo cp $<TARGET_FILE:camera_viewer>
+                        ${BOARD_HOME}/
+                COMMAND sudo cp $<TARGET_FILE:web_service>
                         ${BOARD_HOME}/
                 COMMENT "Copying programs to board"
                 )

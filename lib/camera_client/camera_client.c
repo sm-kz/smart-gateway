@@ -1,5 +1,6 @@
 #include "camera_client.h"
 #include "camera.h"
+#include "ipc_utils.h"
 
 #include <stdio.h>
 #include <sys/socket.h>
@@ -9,6 +10,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/un.h>
+#include <poll.h>
 
 void camera_client_init(struct camera_client *client) {
     client->shm_fd = -1;
@@ -63,6 +65,66 @@ error:
     return -1;
 }
 
+int camera_client_command(struct camera_client *client, 
+                        enum camera_command command,
+                        struct camera_response *response) {
+    /* camera service 采用的短连接，即一次请求一次连接，所以客户端同样采用短连接 */
+
+    /* 创建 socket */
+    int sock_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (sock_fd < 0) {
+        perror("[Camera Client] socket");
+        return -1;
+    }
+
+    /* 连接 camera service */
+    struct sockaddr_un addr;
+    addr.sun_family = AF_UNIX;
+    strcpy(addr.sun_path, CAMERA_SOCK_PATH);
+    if (connect(sock_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        perror("[Camera Client] connect");
+        close(sock_fd);
+        return -1;
+    }
+
+    /* 发送请求 */
+    struct camera_request req;
+    req.magic = CAMERA_MAGIC;
+    req.version = CAMERA_VERSION;
+    req.command = command;
+
+    if (send_all(sock_fd, &req, sizeof(req)) < 0) {
+        perror("[Camera Client] send");
+        close(sock_fd);
+        return -1;
+    }
+
+    /* 等待响应 */
+    struct pollfd pfd = {0};
+    pfd.fd = sock_fd;
+    pfd.events = POLLIN;
+    if (poll(&pfd, 1, 3000) <= 0) {
+        perror("[Camera Client] poll");
+        close(sock_fd);
+        return -1;
+    }
+    
+    if (pfd.revents & POLLIN) {
+        if (response == NULL) {
+            struct camera_response dummy;
+            recv_all(sock_fd, &dummy, sizeof(dummy));
+        } else {
+            if (recv_all(sock_fd, response, sizeof(*response)) != sizeof(*response)) {
+                close(sock_fd);
+                return -1;
+            }
+        }
+    }
+
+    close(sock_fd);
+    return 0;
+}
+
 ssize_t camera_client_get_frame(struct camera_client *client, void *buf, size_t max_len) {
     if (client->shared == NULL) {
         fprintf(stderr, "[Camera Client] Error: client hasn't mapped memory yet\r\n");
@@ -92,14 +154,15 @@ int camera_client_get_info(struct camera_client *client, struct camera_frame_hea
 }
 
 void camera_client_close(struct camera_client *client) {
-    if (client->shared == NULL)
-        return;
-
-    close(client->shm_fd);
-    client->shm_fd = 0;
+    if (client->shm_fd) {
+        close(client->shm_fd);
+        client->shm_fd = -1;
+    }
     
-    munmap(client->shared, client->shm_size);
-    client->shared = NULL;
+    if (client->shared != NULL) {
+        munmap(client->shared, client->shm_size);
+        client->shared = NULL;
+    }
 
     shm_unlink(SHM_PATH);
 }

@@ -142,8 +142,8 @@ int main(int argc, char **argv) {
                 if (exit_requested)
                     break;
                 }
-            continue;    
             perror("[Camera Service] accept");
+            continue;    
         }
 
         /* 接收 */

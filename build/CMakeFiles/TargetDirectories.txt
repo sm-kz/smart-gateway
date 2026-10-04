@@ -5,6 +5,7 @@
 /home/rance/Projects/smart_gateway/build/CMakeFiles/camera_client.dir
 /home/rance/Projects/smart_gateway/build/CMakeFiles/camera_ctl.dir
 /home/rance/Projects/smart_gateway/build/CMakeFiles/camera_viewer.dir
+/home/rance/Projects/smart_gateway/build/CMakeFiles/web_service.dir
 /home/rance/Projects/smart_gateway/build/CMakeFiles/send.dir
 /home/rance/Projects/smart_gateway/build/CMakeFiles/edit_cache.dir
 /home/rance/Projects/smart_gateway/build/CMakeFiles/rebuild_cache.dir

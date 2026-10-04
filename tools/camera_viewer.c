@@ -13,10 +13,8 @@ int main(int argc, char **argv) {
 
     camera_client_init(&client);
     ret = camera_client_open(&client);
-    if (ret < 0) {
-        printf("error\r\n");
+    if (ret < 0)
         return -1;
-    }
     
     int fd = open("/dev/fb0", O_RDWR);
     if (fd < 0) {
