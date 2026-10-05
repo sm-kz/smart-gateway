@@ -76,8 +76,7 @@ exit:
 
 int main(int argc, char **argv) {
     /* 初始化摄像头 */
-    camera_init(&camera);
-    camera_set_index(&camera, 1);
+    camera_init(&camera, 1);
     camera_set_pixelfmt(&camera, PIXEL_FMT_RGB565);
     camera_set_res(&camera, 800, 480);
     camera_set_fps(&camera, 30);

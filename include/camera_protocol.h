@@ -5,11 +5,16 @@
 
 /**
  * 自定义摄像头服务协议
+ * 架构：本地协议分为四层，自顶向下为：
+ *      
+ *      Web 层：通过 HTTP 协议进行通信，比如 POST /api/start 请求摄像头开启
+ *      |-> 通过 AF_UNIX(camera_client) 进行连接，数据桥梁是 shm
+ *      Camera Service 层：通过 AF_UNIX 进行通信，维护底层摄像头的信息和状态
  */
 
 #define CAMERA_SOCK_PATH    "/tmp/camera.sock"
 
-#define CAMERA_MAGIC    0x43414D31
+#define CAMERA_MAGIC    0x43414D45  // CAME
 #define CAMERA_VERSION  1
 
 struct camera_status {

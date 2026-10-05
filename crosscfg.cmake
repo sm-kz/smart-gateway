@@ -8,8 +8,8 @@ set(CMAKE_C_COMPILER ${TOOLCHAIN_DIR}/bin/arm-linux-gnueabihf-gcc)
 set(CMAKE_CXX_COMPILER ${TOOLCHAIN_DIR}/bin/arm-linux-gnueabihf-g++)
 
 # 硬件浮点
-set(CMAKE_C_FLAGS "-march=armv7 -mcpu=cortex-a7 -mfpu=neon -mfloat-abi=hard")
-set(CMAKE_CXX_FLAGS "-march=armv7 -mcpu=cortex-a7 -mfpu=neon -mfloat-abi=hard")
+set(CMAKE_C_FLAGS "-mcpu=cortex-a7 -mfpu=neon -mfloat-abi=hard")
+set(CMAKE_CXX_FLAGS "-mcpu=cortex-a7 -mfpu=neon -mfloat-abi=hard")
 
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)

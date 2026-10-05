@@ -98,6 +98,7 @@ web_service: CMakeFiles/web_service.dir/build.make
 web_service: libcamera.a
 web_service: libipc_utils.a
 web_service: libcamera_client.a
+web_service: libdisplay.a
 web_service: libipc_utils.a
 web_service: CMakeFiles/web_service.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking C executable web_service"

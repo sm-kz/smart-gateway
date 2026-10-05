@@ -70,5 +70,6 @@ set(CMAKE_DEPEND_INFO_FILES
   "CMakeFiles/camera_ctl.dir/DependInfo.cmake"
   "CMakeFiles/camera_viewer.dir/DependInfo.cmake"
   "CMakeFiles/web_service.dir/DependInfo.cmake"
+  "CMakeFiles/display.dir/DependInfo.cmake"
   "CMakeFiles/send.dir/DependInfo.cmake"
   )

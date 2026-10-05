@@ -5,7 +5,7 @@
 
 #define PIXEL_FMT_RGB565    V4L2_PIX_FMT_RGB565
 
-#define SHM_PATH            "/camera_frame"
+#define CAMERA_SHM_PATH            "/camera_frame"
 
 struct camera_buffer {
     void *start;
@@ -36,8 +36,7 @@ struct camera {
     void *shm_mm;
 };
 
-void camera_init(struct camera *camera);
-void camera_set_index(struct camera *camera, int index);
+void camera_init(struct camera *camera, int index);
 int camera_open(struct camera *camera);
 void camera_set_res(struct camera *camera, __u32 width, __u32 height);
 void camera_set_pixelfmt(struct camera *camera, __u32 pixelfmt);

@@ -23,7 +23,7 @@ int camera_client_open(struct camera_client *client) {
     if (client->shm_fd >= 0)
         return 0;
 
-    client->shm_fd = shm_open(SHM_PATH, O_RDWR, 0);
+    client->shm_fd = shm_open(CAMERA_SHM_PATH, O_RDWR, 0);
     if (client->shm_fd < 0) {
         perror("[Camera Client] shm_open");
         return -1;
@@ -164,5 +164,5 @@ void camera_client_close(struct camera_client *client) {
         client->shared = NULL;
     }
 
-    shm_unlink(SHM_PATH);
+    shm_unlink(CAMERA_SHM_PATH);
 }

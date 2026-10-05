@@ -228,6 +228,19 @@ web_service/fast:
 .PHONY : web_service/fast
 
 #=============================================================================
+# Target rules for targets named display
+
+# Build rule for target.
+display: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 display
+.PHONY : display
+
+# fast build rule for target.
+display/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/display.dir/build.make CMakeFiles/display.dir/build
+.PHONY : display/fast
+
+#=============================================================================
 # Target rules for targets named send
 
 # Build rule for target.
@@ -287,6 +300,30 @@ lib/camera_client/camera_client.s: lib/camera_client/camera_client.c.s
 lib/camera_client/camera_client.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/camera_client.dir/build.make CMakeFiles/camera_client.dir/lib/camera_client/camera_client.c.s
 .PHONY : lib/camera_client/camera_client.c.s
+
+lib/display/display.o: lib/display/display.c.o
+.PHONY : lib/display/display.o
+
+# target to build an object file
+lib/display/display.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/display.dir/build.make CMakeFiles/display.dir/lib/display/display.c.o
+.PHONY : lib/display/display.c.o
+
+lib/display/display.i: lib/display/display.c.i
+.PHONY : lib/display/display.i
+
+# target to preprocess a source file
+lib/display/display.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/display.dir/build.make CMakeFiles/display.dir/lib/display/display.c.i
+.PHONY : lib/display/display.c.i
+
+lib/display/display.s: lib/display/display.c.s
+.PHONY : lib/display/display.s
+
+# target to generate assembly for a file
+lib/display/display.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/display.dir/build.make CMakeFiles/display.dir/lib/display/display.c.s
+.PHONY : lib/display/display.c.s
 
 lib/ipc/ipc_utils.o: lib/ipc/ipc_utils.c.o
 .PHONY : lib/ipc/ipc_utils.o
@@ -447,6 +484,7 @@ help:
 	@echo "... camera_ctl"
 	@echo "... camera_service"
 	@echo "... camera_viewer"
+	@echo "... display"
 	@echo "... ipc_utils"
 	@echo "... smart_gateway"
 	@echo "... web_service"
@@ -456,6 +494,9 @@ help:
 	@echo "... lib/camera_client/camera_client.o"
 	@echo "... lib/camera_client/camera_client.i"
 	@echo "... lib/camera_client/camera_client.s"
+	@echo "... lib/display/display.o"
+	@echo "... lib/display/display.i"
+	@echo "... lib/display/display.s"
 	@echo "... lib/ipc/ipc_utils.o"
 	@echo "... lib/ipc/ipc_utils.i"
 	@echo "... lib/ipc/ipc_utils.s"

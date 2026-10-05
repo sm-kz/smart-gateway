@@ -15,11 +15,14 @@
 /**
  * struct camera 成员初始化
  */
-void camera_init(struct camera *camera) {
-    memset(camera, 0, sizeof(*camera));
+void camera_init(struct camera *camera, int index) {
+    if (index < 0)
+        fprintf(stderr, "[Camera] Warning: index %d is invalid\r\n", index);
 
+    memset(camera, 0, sizeof(*camera));
+    
     camera->fd = -1;
-    camera->index = -1;
+    camera->index = index;
     camera->width = 800;
     camera->height = 480;
     camera->pixelformat = PIXEL_FMT_RGB565;
@@ -27,15 +30,6 @@ void camera_init(struct camera *camera) {
 
     camera->shm_fd = -1;
     camera->shm_mm = NULL;
-}
-
-/**
- * 设置摄像头设备索引
- */
-void camera_set_index(struct camera *camera, int index) {
-    if (index < 0)
-        fprintf(stderr, "[Camera] Warning: index %d is invalid\r\n", index);
-    camera->index = index;
 }
 
 /**
@@ -347,7 +341,7 @@ int camera_dequeue(struct camera *camera) {
 int camera_close(struct camera *camera) {
     if (camera->state == CLOSED)
         return 0;
-        
+
     if (camera->state == STREAMING)
         camera_stream_off(camera);
 
@@ -375,18 +369,21 @@ int camera_close(struct camera *camera) {
  * 创建共享内存 
  */
 int camera_shm_create(struct camera *camera) {
-    if (camera->shm_fd != -1) {
-        fprintf(stderr, "[Camera] Aborted: shm cannot be double created\r\n");
+    if (camera->shm_fd >= 0)
+        return 0;
+
+    if (camera->fd < 0) {
+        fprintf(stderr, "[Camera] Error: creating shm before camera opened is not allowed\r\n");
         return -1;
     }
 
-    int shm_size;
-    camera->shm_fd = shm_open(SHM_PATH, O_RDWR | O_CREAT, 0666);
+    camera->shm_fd = shm_open(CAMERA_SHM_PATH, O_RDWR | O_CREAT, 0666);
     if (camera->shm_fd < 0) {
         perror("[Camera] shm_open");
         return -1;
     }
-
+    
+    int shm_size;
     shm_size = sizeof(struct camera_frame_header) + camera->bytesperline * camera->height * 2;  // 双缓冲
     if (ftruncate(camera->shm_fd, shm_size) < 0) {
         perror("[Camera] ftruncate");
@@ -418,7 +415,7 @@ int camera_shm_create(struct camera *camera) {
 error:
     close(camera->shm_fd);
     camera->shm_fd = -1;
-    shm_unlink(SHM_PATH);
+    shm_unlink(CAMERA_SHM_PATH);
     return -1;
 }
 
@@ -427,17 +424,16 @@ error:
  */
 int camera_shm_destroy(struct camera *camera) {
     if (camera->shm_fd == -1) {
-        fprintf(stderr, "[Camera] Aborted: shm cannot be double destroyed\r\n");
-        return -1;
+        return 0;
     }
 
     munmap(camera->shm_mm, 
-        sizeof(struct camera_frame_header) + camera->bytesperline * camera->height);
+        sizeof(struct camera_frame_header) + camera->bytesperline * camera->height * 2);
+    camera->shm_mm = NULL;
 
     close(camera->shm_fd);
     camera->shm_fd = -1;
-    shm_unlink(SHM_PATH);
-    camera->shm_mm = NULL;
+    shm_unlink(CAMERA_SHM_PATH);
 
     return 0;
 }

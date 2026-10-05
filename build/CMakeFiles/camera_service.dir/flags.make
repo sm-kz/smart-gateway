@@ -6,5 +6,5 @@ C_DEFINES =
 
 C_INCLUDES = -I/home/rance/Projects/smart_gateway/include
 
-C_FLAGS = -march=armv7 -mcpu=cortex-a7 -mfpu=neon -mfloat-abi=hard -g
+C_FLAGS = -mcpu=cortex-a7 -mfpu=neon -mfloat-abi=hard -g
 

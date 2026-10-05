@@ -23,6 +23,7 @@ int main(int argc, char **argv) {
     char *buf = mmap(NULL, client.shared->header.frame_size,
                      PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
+    // 这里有误，共享内存的数据变化不会引起 POLLIN 事件
     struct pollfd pfd;
     pfd.fd = client.shm_fd;
     pfd.events = POLLIN;

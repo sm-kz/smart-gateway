@@ -32,7 +32,7 @@ target_link_libraries(${APP} PRIVATE
     Threads::Threads)
 
 find_package(Threads REQUIRED)
-target_compile_options(${APP} PRIVATE -pthread -Wall)
+target_compile_options(${APP} PRIVATE -pthread)
 
 # ipc_utils 库
 add_library(ipc_utils STATIC ${PROJECT_SOURCE_DIR}/lib/ipc/ipc_utils.c)
@@ -64,7 +64,11 @@ target_link_libraries(camera_viewer PRIVATE camera_client rt)
 
 # web_service 程序
 add_executable(web_service ${PROJECT_SOURCE_DIR}/services/web_service.c)
-target_link_libraries(web_service PRIVATE camera ipc_utils camera_client)
+target_link_libraries(web_service PRIVATE camera ipc_utils camera_client display)
+
+# display 库
+add_library(display STATIC ${PROJECT_SOURCE_DIR}/lib/display/display.c)
+target_include_directories(display PUBLIC ${PROJECT_SOURCE_DIR}/include)
 
 set(BOARD_HOME /home/rance/linux/nfs/rootfs/home/menoa)
 add_custom_target(send
