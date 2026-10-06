@@ -21,11 +21,8 @@ static volatile sig_atomic_t stream_thread_valid = 0;
 static volatile sig_atomic_t exit_requested = 0;
 
 /* 进程正式被 kill 前释放资源 */
-void sigterm_handle (int sig, siginfo_t *info, void *context) {
+static void sigterm_handler (int sig) {
     (void)sig;
-    (void)info;
-    (void)context;
-
     exit_requested = 1;
 }
 
@@ -74,7 +71,7 @@ exit:
     pthread_exit(NULL);
 }
 
-int main(int argc, char **argv) {
+int camera_service(int pipe) {
     /* 初始化摄像头 */
     camera_init(&camera, 1);
     camera_set_pixelfmt(&camera, PIXEL_FMT_RGB565);
@@ -91,9 +88,8 @@ int main(int argc, char **argv) {
 
     /* 初始化 SIGINT 信号处理 */
     struct sigaction sa = {0};
+    sa.sa_handler = sigterm_handler;
     sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_SIGINFO;
-    sa.sa_sigaction = sigterm_handle;
     if (sigaction(SIGTERM, &sa, NULL) < 0) {
         perror("[Camera Service] sigaction\r\n");
         goto error;
@@ -128,7 +124,17 @@ int main(int argc, char **argv) {
 
     /* 创建共享内存，让后续摄像头数据可以被客户程序使用 */
     if (camera_shm_create(&camera) < 0)
-        goto error2;
+        goto error1;
+
+    /* 初始化就绪，将就绪状态写入管道 */
+    if (pipe >= 0) {
+        char ready = 1;
+        if (write(pipe, &ready, 1) != 1) {
+            perror("[Camera Service] ready notify");
+            goto error2;
+        }
+        close(pipe);
+    }
     
     int client_fd;
     pthread_t stream_thread;

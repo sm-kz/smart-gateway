@@ -86,17 +86,54 @@ CMakeFiles/smart_gateway.dir/src/main.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/smart_gateway.dir/src/main.c.s"
 	/usr/local/arm/gcc-linaro-4.9.4-2017.01-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc --sysroot=/usr/local/arm/gcc-linaro-4.9.4-2017.01-x86_64_arm-linux-gnueabihf/arm-linux-gnueabihf/libc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/rance/Projects/smart_gateway/src/main.c -o CMakeFiles/smart_gateway.dir/src/main.c.s
 
+CMakeFiles/smart_gateway.dir/services/camera_service.c.o: CMakeFiles/smart_gateway.dir/flags.make
+CMakeFiles/smart_gateway.dir/services/camera_service.c.o: /home/rance/Projects/smart_gateway/services/camera_service.c
+CMakeFiles/smart_gateway.dir/services/camera_service.c.o: CMakeFiles/smart_gateway.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building C object CMakeFiles/smart_gateway.dir/services/camera_service.c.o"
+	/usr/local/arm/gcc-linaro-4.9.4-2017.01-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc --sysroot=/usr/local/arm/gcc-linaro-4.9.4-2017.01-x86_64_arm-linux-gnueabihf/arm-linux-gnueabihf/libc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/smart_gateway.dir/services/camera_service.c.o -MF CMakeFiles/smart_gateway.dir/services/camera_service.c.o.d -o CMakeFiles/smart_gateway.dir/services/camera_service.c.o -c /home/rance/Projects/smart_gateway/services/camera_service.c
+
+CMakeFiles/smart_gateway.dir/services/camera_service.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/smart_gateway.dir/services/camera_service.c.i"
+	/usr/local/arm/gcc-linaro-4.9.4-2017.01-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc --sysroot=/usr/local/arm/gcc-linaro-4.9.4-2017.01-x86_64_arm-linux-gnueabihf/arm-linux-gnueabihf/libc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/rance/Projects/smart_gateway/services/camera_service.c > CMakeFiles/smart_gateway.dir/services/camera_service.c.i
+
+CMakeFiles/smart_gateway.dir/services/camera_service.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/smart_gateway.dir/services/camera_service.c.s"
+	/usr/local/arm/gcc-linaro-4.9.4-2017.01-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc --sysroot=/usr/local/arm/gcc-linaro-4.9.4-2017.01-x86_64_arm-linux-gnueabihf/arm-linux-gnueabihf/libc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/rance/Projects/smart_gateway/services/camera_service.c -o CMakeFiles/smart_gateway.dir/services/camera_service.c.s
+
+CMakeFiles/smart_gateway.dir/services/web_service.c.o: CMakeFiles/smart_gateway.dir/flags.make
+CMakeFiles/smart_gateway.dir/services/web_service.c.o: /home/rance/Projects/smart_gateway/services/web_service.c
+CMakeFiles/smart_gateway.dir/services/web_service.c.o: CMakeFiles/smart_gateway.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building C object CMakeFiles/smart_gateway.dir/services/web_service.c.o"
+	/usr/local/arm/gcc-linaro-4.9.4-2017.01-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc --sysroot=/usr/local/arm/gcc-linaro-4.9.4-2017.01-x86_64_arm-linux-gnueabihf/arm-linux-gnueabihf/libc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/smart_gateway.dir/services/web_service.c.o -MF CMakeFiles/smart_gateway.dir/services/web_service.c.o.d -o CMakeFiles/smart_gateway.dir/services/web_service.c.o -c /home/rance/Projects/smart_gateway/services/web_service.c
+
+CMakeFiles/smart_gateway.dir/services/web_service.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/smart_gateway.dir/services/web_service.c.i"
+	/usr/local/arm/gcc-linaro-4.9.4-2017.01-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc --sysroot=/usr/local/arm/gcc-linaro-4.9.4-2017.01-x86_64_arm-linux-gnueabihf/arm-linux-gnueabihf/libc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/rance/Projects/smart_gateway/services/web_service.c > CMakeFiles/smart_gateway.dir/services/web_service.c.i
+
+CMakeFiles/smart_gateway.dir/services/web_service.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/smart_gateway.dir/services/web_service.c.s"
+	/usr/local/arm/gcc-linaro-4.9.4-2017.01-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc --sysroot=/usr/local/arm/gcc-linaro-4.9.4-2017.01-x86_64_arm-linux-gnueabihf/arm-linux-gnueabihf/libc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/rance/Projects/smart_gateway/services/web_service.c -o CMakeFiles/smart_gateway.dir/services/web_service.c.s
+
 # Object files for target smart_gateway
 smart_gateway_OBJECTS = \
-"CMakeFiles/smart_gateway.dir/src/main.c.o"
+"CMakeFiles/smart_gateway.dir/src/main.c.o" \
+"CMakeFiles/smart_gateway.dir/services/camera_service.c.o" \
+"CMakeFiles/smart_gateway.dir/services/web_service.c.o"
 
 # External object files for target smart_gateway
 smart_gateway_EXTERNAL_OBJECTS =
 
 smart_gateway: CMakeFiles/smart_gateway.dir/src/main.c.o
+smart_gateway: CMakeFiles/smart_gateway.dir/services/camera_service.c.o
+smart_gateway: CMakeFiles/smart_gateway.dir/services/web_service.c.o
 smart_gateway: CMakeFiles/smart_gateway.dir/build.make
+smart_gateway: libcamera.a
+smart_gateway: libipc_utils.a
+smart_gateway: libcamera_client.a
+smart_gateway: libdisplay.a
+smart_gateway: libipc_utils.a
 smart_gateway: CMakeFiles/smart_gateway.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking C executable smart_gateway"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Linking C executable smart_gateway"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/smart_gateway.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

@@ -163,19 +163,6 @@ camera/fast:
 .PHONY : camera/fast
 
 #=============================================================================
-# Target rules for targets named camera_service
-
-# Build rule for target.
-camera_service: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 camera_service
-.PHONY : camera_service
-
-# fast build rule for target.
-camera_service/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/camera_service.dir/build.make CMakeFiles/camera_service.dir/build
-.PHONY : camera_service/fast
-
-#=============================================================================
 # Target rules for targets named camera_client
 
 # Build rule for target.
@@ -187,6 +174,19 @@ camera_client: cmake_check_build_system
 camera_client/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/camera_client.dir/build.make CMakeFiles/camera_client.dir/build
 .PHONY : camera_client/fast
+
+#=============================================================================
+# Target rules for targets named display
+
+# Build rule for target.
+display: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 display
+.PHONY : display
+
+# fast build rule for target.
+display/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/display.dir/build.make CMakeFiles/display.dir/build
+.PHONY : display/fast
 
 #=============================================================================
 # Target rules for targets named camera_ctl
@@ -213,32 +213,6 @@ camera_viewer: cmake_check_build_system
 camera_viewer/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/camera_viewer.dir/build.make CMakeFiles/camera_viewer.dir/build
 .PHONY : camera_viewer/fast
-
-#=============================================================================
-# Target rules for targets named web_service
-
-# Build rule for target.
-web_service: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 web_service
-.PHONY : web_service
-
-# fast build rule for target.
-web_service/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/web_service.dir/build.make CMakeFiles/web_service.dir/build
-.PHONY : web_service/fast
-
-#=============================================================================
-# Target rules for targets named display
-
-# Build rule for target.
-display: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 display
-.PHONY : display
-
-# fast build rule for target.
-display/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/display.dir/build.make CMakeFiles/display.dir/build
-.PHONY : display/fast
 
 #=============================================================================
 # Target rules for targets named send
@@ -354,7 +328,7 @@ services/camera_service.o: services/camera_service.c.o
 
 # target to build an object file
 services/camera_service.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/camera_service.dir/build.make CMakeFiles/camera_service.dir/services/camera_service.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/smart_gateway.dir/build.make CMakeFiles/smart_gateway.dir/services/camera_service.c.o
 .PHONY : services/camera_service.c.o
 
 services/camera_service.i: services/camera_service.c.i
@@ -362,7 +336,7 @@ services/camera_service.i: services/camera_service.c.i
 
 # target to preprocess a source file
 services/camera_service.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/camera_service.dir/build.make CMakeFiles/camera_service.dir/services/camera_service.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/smart_gateway.dir/build.make CMakeFiles/smart_gateway.dir/services/camera_service.c.i
 .PHONY : services/camera_service.c.i
 
 services/camera_service.s: services/camera_service.c.s
@@ -370,7 +344,7 @@ services/camera_service.s: services/camera_service.c.s
 
 # target to generate assembly for a file
 services/camera_service.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/camera_service.dir/build.make CMakeFiles/camera_service.dir/services/camera_service.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/smart_gateway.dir/build.make CMakeFiles/smart_gateway.dir/services/camera_service.c.s
 .PHONY : services/camera_service.c.s
 
 services/web_service.o: services/web_service.c.o
@@ -378,7 +352,7 @@ services/web_service.o: services/web_service.c.o
 
 # target to build an object file
 services/web_service.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/web_service.dir/build.make CMakeFiles/web_service.dir/services/web_service.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/smart_gateway.dir/build.make CMakeFiles/smart_gateway.dir/services/web_service.c.o
 .PHONY : services/web_service.c.o
 
 services/web_service.i: services/web_service.c.i
@@ -386,7 +360,7 @@ services/web_service.i: services/web_service.c.i
 
 # target to preprocess a source file
 services/web_service.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/web_service.dir/build.make CMakeFiles/web_service.dir/services/web_service.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/smart_gateway.dir/build.make CMakeFiles/smart_gateway.dir/services/web_service.c.i
 .PHONY : services/web_service.c.i
 
 services/web_service.s: services/web_service.c.s
@@ -394,7 +368,7 @@ services/web_service.s: services/web_service.c.s
 
 # target to generate assembly for a file
 services/web_service.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/web_service.dir/build.make CMakeFiles/web_service.dir/services/web_service.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/smart_gateway.dir/build.make CMakeFiles/smart_gateway.dir/services/web_service.c.s
 .PHONY : services/web_service.c.s
 
 src/main.o: src/main.c.o
@@ -482,12 +456,10 @@ help:
 	@echo "... camera"
 	@echo "... camera_client"
 	@echo "... camera_ctl"
-	@echo "... camera_service"
 	@echo "... camera_viewer"
 	@echo "... display"
 	@echo "... ipc_utils"
 	@echo "... smart_gateway"
-	@echo "... web_service"
 	@echo "... lib/camera/camera.o"
 	@echo "... lib/camera/camera.i"
 	@echo "... lib/camera/camera.s"

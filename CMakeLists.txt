@@ -4,9 +4,10 @@ set(CMAKE_BUILD_TYPE Debug)
 
 # 主程序
 file(GLOB SOURCES "${PROJECT_SOURCE_DIR}/src/*.c")
+file(GLOB SERVICES "${PROJECT_SOURCE_DIR}/services/*.c")
 
 set(APP smart_gateway)
-add_executable(${APP} ${SOURCES})
+add_executable(${APP} ${SOURCES} ${SERVICES})
 
 target_include_directories(${APP} PRIVATE
     /usr/local/include
@@ -23,13 +24,20 @@ target_link_directories(${APP} PRIVATE
                         ${USR_LIBS}/alsalib)
 
 target_link_libraries(${APP} PRIVATE
+    # 第三方库
     freetype 
     jpeg 
     png 
     ts 
     paho-mqtt3c 
     asound 
-    Threads::Threads)
+    Threads::Threads
+
+    # 自定义库
+    camera 
+    ipc_utils 
+    camera_client 
+    display)
 
 find_package(Threads REQUIRED)
 target_compile_options(${APP} PRIVATE -pthread)
@@ -43,14 +51,14 @@ add_library(camera STATIC ${PROJECT_SOURCE_DIR}/lib/camera/camera.c)
 target_include_directories(camera PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(camera PRIVATE rt)
 
-# camera_service 服务程序
-add_executable(camera_service ${PROJECT_SOURCE_DIR}/services/camera_service.c)
-target_link_libraries(camera_service PRIVATE ipc_utils camera Threads::Threads)
-
 # camera_client 库
 add_library(camera_client STATIC ${PROJECT_SOURCE_DIR}/lib/camera_client/camera_client.c)
 target_include_directories(camera_client PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(camera_client PRIVATE ipc_utils)
+
+# display 库
+add_library(display STATIC ${PROJECT_SOURCE_DIR}/lib/display/display.c)
+target_include_directories(display PUBLIC ${PROJECT_SOURCE_DIR}/include)
 
 # camera_ctl 调试程序
 add_executable(camera_ctl ${PROJECT_SOURCE_DIR}/tools/camera_ctl.c)
@@ -62,26 +70,15 @@ add_executable(camera_viewer ${PROJECT_SOURCE_DIR}/tools/camera_viewer.c)
 target_include_directories(camera_viewer PRIVATE ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(camera_viewer PRIVATE camera_client rt)
 
-# web_service 程序
-add_executable(web_service ${PROJECT_SOURCE_DIR}/services/web_service.c)
-target_link_libraries(web_service PRIVATE camera ipc_utils camera_client display)
-
-# display 库
-add_library(display STATIC ${PROJECT_SOURCE_DIR}/lib/display/display.c)
-target_include_directories(display PUBLIC ${PROJECT_SOURCE_DIR}/include)
 
 set(BOARD_HOME /home/rance/linux/nfs/rootfs/home/menoa)
 add_custom_target(send
                 DEPENDS ${APP} camera_service camera_ctl
                 COMMAND sudo cp $<TARGET_FILE:${APP}>
                         ${BOARD_HOME}/
-                COMMAND sudo cp $<TARGET_FILE:camera_service>
-                        ${BOARD_HOME}/
                 COMMAND sudo cp $<TARGET_FILE:camera_ctl>
                         ${BOARD_HOME}/
                 COMMAND sudo cp $<TARGET_FILE:camera_viewer>
-                        ${BOARD_HOME}/
-                COMMAND sudo cp $<TARGET_FILE:web_service>
                         ${BOARD_HOME}/
                 COMMENT "Copying programs to board"
                 )

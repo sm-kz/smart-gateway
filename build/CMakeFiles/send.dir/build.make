@@ -71,10 +71,8 @@ CMakeFiles/send: camera_service
 CMakeFiles/send: camera_ctl
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Copying programs to board"
 	sudo cp /home/rance/Projects/smart_gateway/build/smart_gateway /home/rance/linux/nfs/rootfs/home/menoa/
-	sudo cp /home/rance/Projects/smart_gateway/build/camera_service /home/rance/linux/nfs/rootfs/home/menoa/
 	sudo cp /home/rance/Projects/smart_gateway/build/camera_ctl /home/rance/linux/nfs/rootfs/home/menoa/
 	sudo cp /home/rance/Projects/smart_gateway/build/camera_viewer /home/rance/linux/nfs/rootfs/home/menoa/
-	sudo cp /home/rance/Projects/smart_gateway/build/web_service /home/rance/linux/nfs/rootfs/home/menoa/
 
 CMakeFiles/send.dir/codegen:
 .PHONY : CMakeFiles/send.dir/codegen

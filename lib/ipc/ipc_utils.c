@@ -35,7 +35,7 @@ ssize_t recv_all(int fd, void *buf, size_t len) {
 ssize_t send_all(int fd, void *buf, size_t len) {
     if (buf == NULL || len == 0)
         return 0;
-        
+
     ssize_t sent = 0;
     char *p = buf;
 
@@ -63,8 +63,11 @@ enum req_method http_get_request_method(const char *request) {
         return REQUEST_INVALID;
 }
 
-size_t http_get_request_target(const char *request, char **target, size_t *len) {
-    if (request == NULL || target == NULL || len == NULL)
+/**
+ * 解析 http 请求的 target
+ */
+size_t http_get_request_target(const char *request, char **target, size_t *size) {
+    if (request == NULL || target == NULL || size == NULL)
         return 0;
 
     char *s = strchr(request, ' ');
@@ -76,16 +79,18 @@ size_t http_get_request_target(const char *request, char **target, size_t *len) 
     if (e == NULL)
         return 0;
 
-    if (e - s + 1 > *len) {
-        char *temp = realloc(*target, e - s + 1);
+    size_t target_size = e - s + 1;
+
+    if (target_size > *size) {
+        char *temp = realloc(*target, target_size);
         if (temp == NULL)
             return 0;
         *target = temp;
-        *len = e - s + 1;
+        *size = target_size;
     }
     
-    memcpy(*target, s, *len - 1);
-    (*target)[*len - 1] = '\0';
+    memcpy(*target, s, target_size - 1);
+    (*target)[target_size - 1] = '\0';
 
-    return *len - 1;
+    return target_size;
 }

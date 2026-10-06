@@ -66,24 +66,20 @@ CMAKE_BINARY_DIR = /home/rance/Projects/smart_gateway/build
 all: CMakeFiles/smart_gateway.dir/all
 all: CMakeFiles/ipc_utils.dir/all
 all: CMakeFiles/camera.dir/all
-all: CMakeFiles/camera_service.dir/all
 all: CMakeFiles/camera_client.dir/all
+all: CMakeFiles/display.dir/all
 all: CMakeFiles/camera_ctl.dir/all
 all: CMakeFiles/camera_viewer.dir/all
-all: CMakeFiles/web_service.dir/all
-all: CMakeFiles/display.dir/all
 .PHONY : all
 
 # The main recursive "codegen" target.
 codegen: CMakeFiles/smart_gateway.dir/codegen
 codegen: CMakeFiles/ipc_utils.dir/codegen
 codegen: CMakeFiles/camera.dir/codegen
-codegen: CMakeFiles/camera_service.dir/codegen
 codegen: CMakeFiles/camera_client.dir/codegen
+codegen: CMakeFiles/display.dir/codegen
 codegen: CMakeFiles/camera_ctl.dir/codegen
 codegen: CMakeFiles/camera_viewer.dir/codegen
-codegen: CMakeFiles/web_service.dir/codegen
-codegen: CMakeFiles/display.dir/codegen
 .PHONY : codegen
 
 # The main recursive "preinstall" target.
@@ -94,12 +90,10 @@ preinstall:
 clean: CMakeFiles/smart_gateway.dir/clean
 clean: CMakeFiles/ipc_utils.dir/clean
 clean: CMakeFiles/camera.dir/clean
-clean: CMakeFiles/camera_service.dir/clean
 clean: CMakeFiles/camera_client.dir/clean
+clean: CMakeFiles/display.dir/clean
 clean: CMakeFiles/camera_ctl.dir/clean
 clean: CMakeFiles/camera_viewer.dir/clean
-clean: CMakeFiles/web_service.dir/clean
-clean: CMakeFiles/display.dir/clean
 clean: CMakeFiles/send.dir/clean
 .PHONY : clean
 
@@ -107,15 +101,18 @@ clean: CMakeFiles/send.dir/clean
 # Target rules for target CMakeFiles/smart_gateway.dir
 
 # All Build rule for target.
-CMakeFiles/smart_gateway.dir/all:
+CMakeFiles/smart_gateway.dir/all: CMakeFiles/ipc_utils.dir/all
+CMakeFiles/smart_gateway.dir/all: CMakeFiles/camera.dir/all
+CMakeFiles/smart_gateway.dir/all: CMakeFiles/camera_client.dir/all
+CMakeFiles/smart_gateway.dir/all: CMakeFiles/display.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/smart_gateway.dir/build.make CMakeFiles/smart_gateway.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/smart_gateway.dir/build.make CMakeFiles/smart_gateway.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=16,17 "Built target smart_gateway"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=14,15,16,17 "Built target smart_gateway"
 .PHONY : CMakeFiles/smart_gateway.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/smart_gateway.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/rance/Projects/smart_gateway/build/CMakeFiles 2
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/rance/Projects/smart_gateway/build/CMakeFiles 12
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/smart_gateway.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/rance/Projects/smart_gateway/build/CMakeFiles 0
 .PHONY : CMakeFiles/smart_gateway.dir/rule
@@ -127,7 +124,7 @@ smart_gateway: CMakeFiles/smart_gateway.dir/rule
 # codegen rule for target.
 CMakeFiles/smart_gateway.dir/codegen:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/smart_gateway.dir/build.make CMakeFiles/smart_gateway.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=16,17 "Finished codegen for target smart_gateway"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=14,15,16,17 "Finished codegen for target smart_gateway"
 .PHONY : CMakeFiles/smart_gateway.dir/codegen
 
 # clean rule for target.
@@ -142,7 +139,7 @@ CMakeFiles/smart_gateway.dir/clean:
 CMakeFiles/ipc_utils.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ipc_utils.dir/build.make CMakeFiles/ipc_utils.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ipc_utils.dir/build.make CMakeFiles/ipc_utils.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=13,14 "Built target ipc_utils"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=11,12 "Built target ipc_utils"
 .PHONY : CMakeFiles/ipc_utils.dir/all
 
 # Build rule for subdir invocation for target.
@@ -159,7 +156,7 @@ ipc_utils: CMakeFiles/ipc_utils.dir/rule
 # codegen rule for target.
 CMakeFiles/ipc_utils.dir/codegen:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ipc_utils.dir/build.make CMakeFiles/ipc_utils.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=13,14 "Finished codegen for target ipc_utils"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=11,12 "Finished codegen for target ipc_utils"
 .PHONY : CMakeFiles/ipc_utils.dir/codegen
 
 # clean rule for target.
@@ -200,39 +197,6 @@ CMakeFiles/camera.dir/clean:
 .PHONY : CMakeFiles/camera.dir/clean
 
 #=============================================================================
-# Target rules for target CMakeFiles/camera_service.dir
-
-# All Build rule for target.
-CMakeFiles/camera_service.dir/all: CMakeFiles/ipc_utils.dir/all
-CMakeFiles/camera_service.dir/all: CMakeFiles/camera.dir/all
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/camera_service.dir/build.make CMakeFiles/camera_service.dir/depend
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/camera_service.dir/build.make CMakeFiles/camera_service.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=7,8 "Built target camera_service"
-.PHONY : CMakeFiles/camera_service.dir/all
-
-# Build rule for subdir invocation for target.
-CMakeFiles/camera_service.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/rance/Projects/smart_gateway/build/CMakeFiles 6
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/camera_service.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/rance/Projects/smart_gateway/build/CMakeFiles 0
-.PHONY : CMakeFiles/camera_service.dir/rule
-
-# Convenience name for target.
-camera_service: CMakeFiles/camera_service.dir/rule
-.PHONY : camera_service
-
-# codegen rule for target.
-CMakeFiles/camera_service.dir/codegen:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/camera_service.dir/build.make CMakeFiles/camera_service.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=7,8 "Finished codegen for target camera_service"
-.PHONY : CMakeFiles/camera_service.dir/codegen
-
-# clean rule for target.
-CMakeFiles/camera_service.dir/clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/camera_service.dir/build.make CMakeFiles/camera_service.dir/clean
-.PHONY : CMakeFiles/camera_service.dir/clean
-
-#=============================================================================
 # Target rules for target CMakeFiles/camera_client.dir
 
 # All Build rule for target.
@@ -263,6 +227,38 @@ CMakeFiles/camera_client.dir/codegen:
 CMakeFiles/camera_client.dir/clean:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/camera_client.dir/build.make CMakeFiles/camera_client.dir/clean
 .PHONY : CMakeFiles/camera_client.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/display.dir
+
+# All Build rule for target.
+CMakeFiles/display.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/display.dir/build.make CMakeFiles/display.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/display.dir/build.make CMakeFiles/display.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=9,10 "Built target display"
+.PHONY : CMakeFiles/display.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/display.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/rance/Projects/smart_gateway/build/CMakeFiles 2
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/display.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/rance/Projects/smart_gateway/build/CMakeFiles 0
+.PHONY : CMakeFiles/display.dir/rule
+
+# Convenience name for target.
+display: CMakeFiles/display.dir/rule
+.PHONY : display
+
+# codegen rule for target.
+CMakeFiles/display.dir/codegen:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/display.dir/build.make CMakeFiles/display.dir/codegen
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=9,10 "Finished codegen for target display"
+.PHONY : CMakeFiles/display.dir/codegen
+
+# clean rule for target.
+CMakeFiles/display.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/display.dir/build.make CMakeFiles/display.dir/clean
+.PHONY : CMakeFiles/display.dir/clean
 
 #=============================================================================
 # Target rules for target CMakeFiles/camera_ctl.dir
@@ -304,7 +300,7 @@ CMakeFiles/camera_viewer.dir/all: CMakeFiles/ipc_utils.dir/all
 CMakeFiles/camera_viewer.dir/all: CMakeFiles/camera_client.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/camera_viewer.dir/build.make CMakeFiles/camera_viewer.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/camera_viewer.dir/build.make CMakeFiles/camera_viewer.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=9,10 "Built target camera_viewer"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=7,8 "Built target camera_viewer"
 .PHONY : CMakeFiles/camera_viewer.dir/all
 
 # Build rule for subdir invocation for target.
@@ -321,7 +317,7 @@ camera_viewer: CMakeFiles/camera_viewer.dir/rule
 # codegen rule for target.
 CMakeFiles/camera_viewer.dir/codegen:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/camera_viewer.dir/build.make CMakeFiles/camera_viewer.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=9,10 "Finished codegen for target camera_viewer"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=7,8 "Finished codegen for target camera_viewer"
 .PHONY : CMakeFiles/camera_viewer.dir/codegen
 
 # clean rule for target.
@@ -330,89 +326,20 @@ CMakeFiles/camera_viewer.dir/clean:
 .PHONY : CMakeFiles/camera_viewer.dir/clean
 
 #=============================================================================
-# Target rules for target CMakeFiles/web_service.dir
-
-# All Build rule for target.
-CMakeFiles/web_service.dir/all: CMakeFiles/ipc_utils.dir/all
-CMakeFiles/web_service.dir/all: CMakeFiles/camera.dir/all
-CMakeFiles/web_service.dir/all: CMakeFiles/camera_client.dir/all
-CMakeFiles/web_service.dir/all: CMakeFiles/display.dir/all
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/web_service.dir/build.make CMakeFiles/web_service.dir/depend
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/web_service.dir/build.make CMakeFiles/web_service.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=18,19 "Built target web_service"
-.PHONY : CMakeFiles/web_service.dir/all
-
-# Build rule for subdir invocation for target.
-CMakeFiles/web_service.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/rance/Projects/smart_gateway/build/CMakeFiles 10
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/web_service.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/rance/Projects/smart_gateway/build/CMakeFiles 0
-.PHONY : CMakeFiles/web_service.dir/rule
-
-# Convenience name for target.
-web_service: CMakeFiles/web_service.dir/rule
-.PHONY : web_service
-
-# codegen rule for target.
-CMakeFiles/web_service.dir/codegen:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/web_service.dir/build.make CMakeFiles/web_service.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=18,19 "Finished codegen for target web_service"
-.PHONY : CMakeFiles/web_service.dir/codegen
-
-# clean rule for target.
-CMakeFiles/web_service.dir/clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/web_service.dir/build.make CMakeFiles/web_service.dir/clean
-.PHONY : CMakeFiles/web_service.dir/clean
-
-#=============================================================================
-# Target rules for target CMakeFiles/display.dir
-
-# All Build rule for target.
-CMakeFiles/display.dir/all:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/display.dir/build.make CMakeFiles/display.dir/depend
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/display.dir/build.make CMakeFiles/display.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=11,12 "Built target display"
-.PHONY : CMakeFiles/display.dir/all
-
-# Build rule for subdir invocation for target.
-CMakeFiles/display.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/rance/Projects/smart_gateway/build/CMakeFiles 2
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/display.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/rance/Projects/smart_gateway/build/CMakeFiles 0
-.PHONY : CMakeFiles/display.dir/rule
-
-# Convenience name for target.
-display: CMakeFiles/display.dir/rule
-.PHONY : display
-
-# codegen rule for target.
-CMakeFiles/display.dir/codegen:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/display.dir/build.make CMakeFiles/display.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=11,12 "Finished codegen for target display"
-.PHONY : CMakeFiles/display.dir/codegen
-
-# clean rule for target.
-CMakeFiles/display.dir/clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/display.dir/build.make CMakeFiles/display.dir/clean
-.PHONY : CMakeFiles/display.dir/clean
-
-#=============================================================================
 # Target rules for target CMakeFiles/send.dir
 
 # All Build rule for target.
 CMakeFiles/send.dir/all: CMakeFiles/smart_gateway.dir/all
-CMakeFiles/send.dir/all: CMakeFiles/camera_service.dir/all
 CMakeFiles/send.dir/all: CMakeFiles/camera_ctl.dir/all
 CMakeFiles/send.dir/all: CMakeFiles/camera_viewer.dir/all
-CMakeFiles/send.dir/all: CMakeFiles/web_service.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/send.dir/build.make CMakeFiles/send.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/send.dir/build.make CMakeFiles/send.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=15 "Built target send"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=13 "Built target send"
 .PHONY : CMakeFiles/send.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/send.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/rance/Projects/smart_gateway/build/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/rance/Projects/smart_gateway/build/CMakeFiles 17
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/send.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/rance/Projects/smart_gateway/build/CMakeFiles 0
 .PHONY : CMakeFiles/send.dir/rule
@@ -423,10 +350,9 @@ send: CMakeFiles/send.dir/rule
 
 # codegen rule for target.
 CMakeFiles/send.dir/codegen: CMakeFiles/smart_gateway.dir/all
-CMakeFiles/send.dir/codegen: CMakeFiles/camera_service.dir/all
 CMakeFiles/send.dir/codegen: CMakeFiles/camera_ctl.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/send.dir/build.make CMakeFiles/send.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=15 "Finished codegen for target send"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/rance/Projects/smart_gateway/build/CMakeFiles --progress-num=13 "Finished codegen for target send"
 .PHONY : CMakeFiles/send.dir/codegen
 
 # clean rule for target.

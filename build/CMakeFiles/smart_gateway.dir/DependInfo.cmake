@@ -8,6 +8,8 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
+  "/home/rance/Projects/smart_gateway/services/camera_service.c" "CMakeFiles/smart_gateway.dir/services/camera_service.c.o" "gcc" "CMakeFiles/smart_gateway.dir/services/camera_service.c.o.d"
+  "/home/rance/Projects/smart_gateway/services/web_service.c" "CMakeFiles/smart_gateway.dir/services/web_service.c.o" "gcc" "CMakeFiles/smart_gateway.dir/services/web_service.c.o.d"
   "/home/rance/Projects/smart_gateway/src/main.c" "CMakeFiles/smart_gateway.dir/src/main.c.o" "gcc" "CMakeFiles/smart_gateway.dir/src/main.c.o.d"
   )
 

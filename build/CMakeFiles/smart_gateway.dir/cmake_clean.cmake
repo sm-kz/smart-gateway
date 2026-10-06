@@ -1,4 +1,8 @@
 file(REMOVE_RECURSE
+  "CMakeFiles/smart_gateway.dir/services/camera_service.c.o"
+  "CMakeFiles/smart_gateway.dir/services/camera_service.c.o.d"
+  "CMakeFiles/smart_gateway.dir/services/web_service.c.o"
+  "CMakeFiles/smart_gateway.dir/services/web_service.c.o.d"
   "CMakeFiles/smart_gateway.dir/src/main.c.o"
   "CMakeFiles/smart_gateway.dir/src/main.c.o.d"
   "smart_gateway"
