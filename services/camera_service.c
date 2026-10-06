@@ -28,7 +28,7 @@ static void sigterm_handler (int sig) {
 
 void *camera_service_routine (void *arg) {
     struct camera *camera = arg;
-    struct camera_frame *shared;
+    struct camera_ring_buffer *shared;
     int index;
     int buffer_size;
 
@@ -57,12 +57,25 @@ void *camera_service_routine (void *arg) {
             continue;
         }
 
-        /* 帧处理流程 */
-        memcpy(&shared->data[(!shared->header.frame_active) * shared->header.frame_size], 
-            camera->buffers[index].start, camera->buffers[index].size);
+        __u32 seq = shared->header.write_sequence + 1;
+        __u32 slot = seq % shared->header.frame_count;
 
-        shared->header.sequence++;
-        shared->header.frame_active = !shared->header.frame_active;
+        size_t stride =
+            sizeof(struct camera_frame_header) +
+            shared->header.frame_size;
+
+        struct camera_frame_header *frame =
+            (struct camera_frame_header *)
+            (&shared->data[slot * stride]);
+
+        memcpy((char *)frame + sizeof(*frame),
+            camera->buffers[index].start,
+            camera->buffers[index].size);
+
+        frame->sequence = seq;
+        frame->timestamp = 0;
+        
+        shared->header.write_sequence = seq;
 
         camera_queue(camera);
     }

@@ -47,7 +47,7 @@ int camera_client_open(struct camera_client *client) {
         goto error;
     }
 
-    client->last_sequence = client->shared->header.sequence;
+    client->last_sequence = client->shared->header.write_sequence;
 
     if (client->shared->header.magic != CAMERA_MAGIC) {
         fprintf(stderr, "[Camera Client] Error: valid maigic in frame header\r\n");
@@ -125,25 +125,63 @@ int camera_client_command(struct camera_client *client,
     return 0;
 }
 
+static struct camera_frame_header *
+sequence_header_address(struct camera_client *client, __u32 sequence)
+{
+    __u32 index = sequence % client->shared->header.frame_count;
+
+    size_t stride = sizeof(struct camera_frame_header) +
+                    client->shared->header.frame_size;
+
+    return (struct camera_frame_header *)(&client->shared->data[index * stride]);
+}
+
+static void *sequence_data_address(struct camera_client *client, __u32 sequence)
+{
+    struct camera_frame_header *header = sequence_header_address(client, sequence);
+
+    return (char *)header + sizeof(*header);
+}
+
 ssize_t camera_client_get_frame(struct camera_client *client, void *buf, size_t max_len) {
     if (client->shared == NULL) {
         fprintf(stderr, "[Camera Client] Error: client hasn't mapped memory yet\r\n");
         return -1;
     }
 
-    if (client->shared->header.sequence == client->last_sequence)
+    __u32 latest = client->shared->header.write_sequence;
+
+    if (latest == client->last_sequence)
         return 0;
 
-    int index = client->shared->header.frame_active;
-    int len = client->shared->header.frame_size > max_len ? max_len : client->shared->header.frame_size;
+    __u32 next_sequence = client->last_sequence + 1;
+    
+    // 考虑这样一种情况：如果 service 写入速度大于 client 的读取速度，
+    // 环形缓冲可能出现缓冲的覆盖。如果消费者太过落后，取落后最新数据一轮
+    // 的较新数据。
+    if (latest - next_sequence > client->shared->header.frame_count) {
+        next_sequence = latest - client->shared->header.frame_count + 1;
+    }
 
-    memcpy(buf, &client->shared->data[index * client->shared->header.frame_size], len);
-    client->last_sequence = client->shared->header.sequence;
+    struct camera_frame_header *frame =
+        sequence_header_address(client, next_sequence);
+
+    // 又被覆盖了，放弃
+    if (frame->sequence != next_sequence)
+        return 0;
+
+    size_t len =
+        client->shared->header.frame_size < max_len ?
+        client->shared->header.frame_size : max_len;
+
+    memcpy(buf, sequence_data_address(client, next_sequence), len);
+
+    client->last_sequence = next_sequence;
 
     return len;
 }
 
-int camera_client_get_info(struct camera_client *client, struct camera_frame_header *header) {
+int camera_client_get_info(struct camera_client *client, struct camera_ring_header *header) {
     if (client->shared == NULL) {
         fprintf(stderr, "[Camera Client] Error: client hasn't mapped memory yet\r\n");
         return -1;
@@ -154,15 +192,13 @@ int camera_client_get_info(struct camera_client *client, struct camera_frame_hea
 }
 
 void camera_client_close(struct camera_client *client) {
-    if (client->shm_fd) {
-        close(client->shm_fd);
-        client->shm_fd = -1;
-    }
-    
     if (client->shared != NULL) {
         munmap(client->shared, client->shm_size);
         client->shared = NULL;
     }
 
-    shm_unlink(CAMERA_SHM_PATH);
+    if (client->shm_fd) {
+        close(client->shm_fd);
+        client->shm_fd = -1;
+    }
 }

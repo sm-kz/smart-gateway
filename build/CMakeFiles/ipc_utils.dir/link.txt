@@ -1,2 +1,0 @@
-/usr/local/arm/gcc-linaro-4.9.4-2017.01-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-ar qc libipc_utils.a CMakeFiles/ipc_utils.dir/lib/ipc/ipc_utils.c.o
-/usr/local/arm/gcc-linaro-4.9.4-2017.01-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-ranlib libipc_utils.a

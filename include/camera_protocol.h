@@ -16,6 +16,7 @@
 
 #define CAMERA_MAGIC    0x43414D45  // CAME
 #define CAMERA_VERSION  1
+#define CAMERA_RING_SIZE    6
 
 struct camera_status {
     __u32 state;
@@ -41,7 +42,7 @@ struct camera_response {
     } data;
 };
 
-struct camera_frame_header {
+struct camera_ring_header {
     __u32 magic;
 
     __u32 width;
@@ -49,15 +50,26 @@ struct camera_frame_header {
     __u32 pixelformat;
     __u32 bytesperline;
 
-    __u32 frame_size;
-    __u16 frame_count;
-    __u16 frame_active;
+    __u32 frame_size;       // 一帧图像数据大小
+    __u32 frame_count;
+
+    __u32 write_sequence;   // 当前已发布的帧序号
+};
+
+struct camera_frame_header {
     __u32 sequence;
+    __u64 timestamp;
 };
 
 struct camera_frame {
     struct camera_frame_header header;
-    __u8 data[];
+    __u8 data[];    // 保存一帧图像数据
+};
+
+/* 环形缓冲 */
+struct camera_ring_buffer {
+    struct camera_ring_header header;
+    __u8 data[];    // 以 camera_frame 结构体数据进行组织
 };
 
 enum camera_service_state {

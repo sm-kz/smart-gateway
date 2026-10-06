@@ -16,9 +16,6 @@
  * struct camera 成员初始化
  */
 void camera_init(struct camera *camera, int index) {
-    if (index < 0)
-        fprintf(stderr, "[Camera] Warning: index %d is invalid\r\n", index);
-
     memset(camera, 0, sizeof(*camera));
     
     camera->fd = -1;
@@ -384,7 +381,9 @@ int camera_shm_create(struct camera *camera) {
     }
     
     int shm_size;
-    shm_size = sizeof(struct camera_frame_header) + camera->bytesperline * camera->height * 2;  // 双缓冲
+    shm_size = sizeof(struct camera_ring_header) + 
+               (sizeof(struct camera_frame_header) + 
+               camera->bytesperline * camera->height) * CAMERA_RING_SIZE;
     if (ftruncate(camera->shm_fd, shm_size) < 0) {
         perror("[Camera] ftruncate");
         goto error;
@@ -399,16 +398,15 @@ int camera_shm_create(struct camera *camera) {
     }
 
     // 初始化共享内存数据头
-    struct camera_frame *shared = camera->shm_mm;
+    struct camera_ring_buffer *shared = camera->shm_mm;
     shared->header.magic = CAMERA_MAGIC;
     shared->header.width = camera->width;
     shared->header.height = camera->height;
     shared->header.pixelformat = camera->pixelformat;
     shared->header.bytesperline = camera->bytesperline;
     shared->header.frame_size = camera->buffers[0].size;
-    shared->header.frame_count = 2;     // 双缓冲
-    shared->header.frame_active = 0;
-    shared->header.sequence = 0;
+    shared->header.frame_count = CAMERA_RING_SIZE;
+    shared->header.write_sequence = 0;
 
     return 0;
 
@@ -427,8 +425,12 @@ int camera_shm_destroy(struct camera *camera) {
         return 0;
     }
 
-    munmap(camera->shm_mm, 
-        sizeof(struct camera_frame_header) + camera->bytesperline * camera->height * 2);
+    int shm_size;
+    shm_size = sizeof(struct camera_ring_header) + 
+               (sizeof(struct camera_frame_header) + 
+               camera->bytesperline * camera->height) * CAMERA_RING_SIZE;
+               
+    munmap(camera->shm_mm, shm_size);
     camera->shm_mm = NULL;
 
     close(camera->shm_fd);

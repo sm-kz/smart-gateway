@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
     pfd.fd = client.shm_fd;
     pfd.events = POLLIN;
 
-    struct camera_frame_header header;
+    struct camera_ring_header header;
     camera_client_get_info(&client, &header);
     printf("resolution: %ux%u\r\n", header.width, header.height);
 

@@ -33,7 +33,7 @@ static void sigterm_handler(int sig) {
 
 static void *display_routine(void *arg) {
     char *buf = NULL;
-    struct camera_frame_header header = {0};
+    struct camera_ring_header header = {0};
 
     if (camera_client_get_info(&cclient, &header) < 0) {
         fprintf(stderr, "[Web Service] Error: camera_client_get_info\r\n");
