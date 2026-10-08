@@ -15,29 +15,19 @@ target_include_directories(${APP} PRIVATE
 
 set(USR_LIBS /usr/local/lib)
 target_link_directories(${APP} PRIVATE 
-                        ${USR_LIBS}/freetype
-                        ${USR_LIBS}/jpeg
-                        ${USR_LIBS}/libpng
-                        ${USR_LIBS}/zlib
-                        ${USR_LIBS}/tslib
-                        ${USR_LIBS}/paho.mqtt.c
-                        ${USR_LIBS}/alsalib)
+                        ${USR_LIBS}/jpeg)
 
 target_link_libraries(${APP} PRIVATE
     # 第三方库
-    freetype 
     jpeg 
-    png 
-    ts 
-    paho-mqtt3c 
-    asound 
     Threads::Threads
 
     # 自定义库
     camera 
     ipc_utils 
     camera_client 
-    display)
+    display
+    video_utils)
 
 find_package(Threads REQUIRED)
 target_compile_options(${APP} PRIVATE -pthread)
@@ -45,6 +35,13 @@ target_compile_options(${APP} PRIVATE -pthread)
 # ipc_utils 库
 add_library(ipc_utils STATIC ${PROJECT_SOURCE_DIR}/lib/ipc/ipc_utils.c)
 target_include_directories(ipc_utils PUBLIC ${PROJECT_SOURCE_DIR}/include)
+
+# video_utils 库
+add_library(video_utils STATIC ${PROJECT_SOURCE_DIR}/lib/video/video_utils.c)
+target_include_directories(video_utils PUBLIC 
+                        /usr/local/include
+                        ${PROJECT_SOURCE_DIR}/include)
+target_link_libraries(video_utils PRIVATE jpeg)
 
 # camera 库
 add_library(camera STATIC ${PROJECT_SOURCE_DIR}/lib/camera/camera.c)

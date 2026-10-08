@@ -22,7 +22,7 @@ void camera_init(struct camera *camera, int index) {
     camera->index = index;
     camera->width = 800;
     camera->height = 480;
-    camera->pixelformat = PIXEL_FMT_RGB565;
+    camera->pixelformat = CAMERA_PIX_FMT_RGB565;
     camera->pending_buffer = -1;
 
     camera->shm_fd = -1;

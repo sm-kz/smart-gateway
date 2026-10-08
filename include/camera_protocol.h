@@ -2,6 +2,7 @@
 #define __CAMERA_PROTOCAL_H
 
 #include <linux/types.h>
+#include <linux/videodev2.h>
 
 /**
  * 自定义摄像头服务协议
@@ -17,6 +18,11 @@
 #define CAMERA_MAGIC    0x43414D45  // CAME
 #define CAMERA_VERSION  1
 #define CAMERA_RING_SIZE    6
+
+enum camera_pixel_format {
+    CAMERA_PIX_FMT_RGB565 = V4L2_PIX_FMT_RGB565,
+    CAMERA_PIX_FMT_RGB888 = V4L2_PIX_FMT_RGB24
+};
 
 struct camera_status {
     __u32 state;

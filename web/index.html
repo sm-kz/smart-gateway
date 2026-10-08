@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Smart Gateway</title>
+        <meta charset="utf-8">
+        
+        <link rel="stylesheet" href="./style.css">
+    </head>
+
+    <body>
+        <h1>Smart Gateway</h1>
+
+        <div id="camera-panel">
+            <div id="cemera-info">
+                <!-- 摄像头参数显示 -->
+                <div id="camera-params">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th scope="col">Camera</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <th scope="row">State:</th>
+                                <td id="camera-state">Running</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Resolution:</th>
+                                <td id="camera-res">800x480</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Format:</th>
+                                <td id="camera-format">RGB565</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">FPS:</th>
+                                <td id="camera-fps">30</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+        
+                <!-- 摄像头控制按钮 -->
+                <div class="control-buttons">
+                    <button id="start-button">Start</button>
+                    <button id="stop-button">Stop</button>
+                </div>
+            </div>
+
+            <div id="camera-display">
+                <img src="unknown" alt="No Data">
+            </div>
+        </div>
+    </body>
+
+    <script src="./app.js"></script>
+</html>

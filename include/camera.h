@@ -3,8 +3,6 @@
 
 #include <linux/videodev2.h>
 
-#define PIXEL_FMT_RGB565    V4L2_PIX_FMT_RGB565
-
 #define CAMERA_SHM_PATH            "/camera_frame"
 
 struct camera_buffer {

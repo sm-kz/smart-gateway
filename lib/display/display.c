@@ -18,7 +18,7 @@ void display_init(struct display *disp, int index) {
     disp->index = index;
     disp->width = 0;
     disp->height = 0;
-    disp->pixelformat = FORMAT_RGB888;
+    disp->pixelformat = DISPLAY_FORMAT_RGB888;
     disp->buffer.start = NULL;
     disp->buffer.size = 0;
 }
@@ -31,7 +31,7 @@ static int display_get_format(struct display *disp, struct fb_var_screeninfo *vi
             vinfo->green.length == 6 &&
             vinfo->blue.offset == 0 &&
             vinfo->blue.length == 5) {
-            disp->pixelformat = FORMAT_RGB565;
+            disp->pixelformat = DISPLAY_FORMAT_RGB565;
         } else {
             return -1;
         }
@@ -42,7 +42,7 @@ static int display_get_format(struct display *disp, struct fb_var_screeninfo *vi
             vinfo->green.length == 8 &&
             vinfo->blue.offset == 0 &&
             vinfo->blue.length == 8) {
-            disp->pixelformat = FORMAT_RGB888;
+            disp->pixelformat = DISPLAY_FORMAT_RGB888;
         } else {
             return -1;
         }
@@ -53,7 +53,7 @@ static int display_get_format(struct display *disp, struct fb_var_screeninfo *vi
     return 0;
 }
 
-int display_set_format(struct display *disp, enum pixel_format format) {
+int display_set_format(struct display *disp, enum display_pixel_format format) {
     struct fb_var_screeninfo vinfo;
     if (ioctl(disp->fd, FBIOGET_VSCREENINFO, &vinfo) < 0) {
         perror("[Display] ioctl FBIOGET_VSCREENINFO");
@@ -62,7 +62,7 @@ int display_set_format(struct display *disp, enum pixel_format format) {
 
     switch (format)
     {
-    case FORMAT_RGB565:
+    case DISPLAY_FORMAT_RGB565:
         vinfo.bits_per_pixel = 16;
         vinfo.red.offset = 11;
         vinfo.red.length = 5;
@@ -71,7 +71,7 @@ int display_set_format(struct display *disp, enum pixel_format format) {
         vinfo.blue.offset = 0;
         vinfo.blue.length = 5;
         break;
-    case FORMAT_RGB888:
+    case DISPLAY_FORMAT_RGB888:
         vinfo.bits_per_pixel = 24;
         vinfo.red.offset = 16;
         vinfo.red.length = 8;
@@ -173,7 +173,7 @@ void display_fill(struct display *disp,
                   __u32 width,
                   __u32 height,
                   __u32 bytesperline,
-                  enum pixel_format format) {
+                  enum display_pixel_format format) {
     if (disp->buffer.start == NULL || 
         data == NULL ||
         disp->pixelformat != format)
@@ -182,10 +182,10 @@ void display_fill(struct display *disp,
     __u32 bytesperpixel;
     switch (disp->pixelformat)
     {
-    case FORMAT_RGB565:
+    case DISPLAY_FORMAT_RGB565:
         bytesperpixel = 2;
         break;
-    case FORMAT_RGB888:
+    case DISPLAY_FORMAT_RGB888:
         bytesperpixel = 3;
         break;
     default:

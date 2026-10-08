@@ -100,11 +100,19 @@ int camera_client_command(struct camera_client *client,
     }
 
     /* 等待响应 */
+    int ret;
     struct pollfd pfd = {0};
     pfd.fd = sock_fd;
     pfd.events = POLLIN;
-    if (poll(&pfd, 1, 3000) <= 0) {
+    ret = poll(&pfd, 1, 3000);
+    if (ret < 0) {
         perror("[Camera Client] poll");
+        close(sock_fd);
+        return -1;
+    }
+
+    if (ret == 0) {
+        fprintf(stderr, "[Camera Client] poll timeout\n");
         close(sock_fd);
         return -1;
     }

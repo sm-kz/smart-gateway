@@ -39,6 +39,9 @@ void *camera_service_routine (void *arg) {
     pfd.events = POLLIN;
 
     while(camera_service_status == CAMERA_SERVICE_STREAMING) {
+        if (exit_requested)
+            break;
+            
         if (poll(&pfd, 1, 200) <= 0) {
             if (errno == ETIMEDOUT)
                 continue;
@@ -87,7 +90,7 @@ exit:
 int camera_service(int pipe) {
     /* 初始化摄像头 */
     camera_init(&camera, 1);
-    camera_set_pixelfmt(&camera, PIXEL_FMT_RGB565);
+    camera_set_pixelfmt(&camera, CAMERA_PIX_FMT_RGB565);
     camera_set_res(&camera, 800, 480);
     camera_set_fps(&camera, 30);
     if (camera_open(&camera) < 0)
