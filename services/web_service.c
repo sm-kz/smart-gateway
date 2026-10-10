@@ -411,6 +411,10 @@ static void *compress_routine(void *arg) {
     free(buf_565);
 }
 
+static void mutex_cleanup(void *arg) {
+    pthread_mutex_unlock((pthread_mutex_t *)arg);
+}
+
 // 上传事务，由 stream 客户线程处理
 static void *upload_routine(void *arg) {
     struct stream_client *sclient = arg;
@@ -428,6 +432,9 @@ static void *upload_routine(void *arg) {
         
         pthread_mutex_lock(&stream_manager->frame_mutex);
 
+        pthread_cleanup_push(mutex_cleanup, &stream_manager->frame_mutex);
+
+        // pthread_cond_wait 属于取消点，如果不用 cleanup 函数来解锁，那么线程就会带着锁未被解开而结束，容易死锁
         pthread_cond_wait(&stream_manager->frame_cond, &stream_manager->frame_mutex);
         
         // 新帧到来，复制一份，因为 http_jpeg_frame 在 send 时会阻塞，如果持有锁，那么可能造成死锁
@@ -445,7 +452,10 @@ static void *upload_routine(void *arg) {
         }
         memcpy(frame_buf, stream_manager->buf_jpeg, frame_size);
 
-        pthread_mutex_unlock(&stream_manager->frame_mutex);
+        pthread_cleanup_pop(1);
+
+        // 有了 pop 弹出 clean 函数进行解锁，这里不需要再解锁了
+        // pthread_mutex_unlock(&stream_manager->frame_mutex);
 
         // 发送 jpeg 帧数据
         if (http_jpeg_frame(sclient->fd, frame_buf, frame_size) < 0) {

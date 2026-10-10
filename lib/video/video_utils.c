@@ -129,7 +129,7 @@ void stream_client_del(struct stream_manager *manager, struct stream_client *cli
 
     if (stream_client_destroy(client) == 0)
         manager->client_count--;
-    
+
     pthread_mutex_unlock(&manager->mutex);
 }
 
