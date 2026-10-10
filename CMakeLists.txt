@@ -24,7 +24,8 @@ target_link_libraries(${APP} PRIVATE
 
     # 自定义库
     camera 
-    ipc_utils 
+    ipc_utils
+    http_utils
     camera_client 
     display
     video_utils)
@@ -35,6 +36,10 @@ target_compile_options(${APP} PRIVATE -pthread)
 # ipc_utils 库
 add_library(ipc_utils STATIC ${PROJECT_SOURCE_DIR}/lib/ipc/ipc_utils.c)
 target_include_directories(ipc_utils PUBLIC ${PROJECT_SOURCE_DIR}/include)
+
+# http_utils 库
+add_library(http_utils STATIC ${PROJECT_SOURCE_DIR}/lib/http/http_utils.c)
+target_include_directories(http_utils PUBLIC ${PROJECT_SOURCE_DIR}/include)
 
 # video_utils 库
 add_library(video_utils STATIC ${PROJECT_SOURCE_DIR}/lib/video/video_utils.c)
@@ -68,14 +73,14 @@ target_include_directories(camera_viewer PRIVATE ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(camera_viewer PRIVATE camera_client rt)
 
 
-set(BOARD_HOME /home/rance/linux/nfs/rootfs/home/menoa)
+set(BOARD_HOME /home/rance/linux/nfs/rootfs/home/menoa/program)
 add_custom_target(send
                 DEPENDS ${APP} camera_service camera_ctl
                 COMMAND sudo cp $<TARGET_FILE:${APP}>
                         ${BOARD_HOME}/
-                COMMAND sudo cp $<TARGET_FILE:camera_ctl>
-                        ${BOARD_HOME}/
-                COMMAND sudo cp $<TARGET_FILE:camera_viewer>
-                        ${BOARD_HOME}/
+                # COMMAND sudo cp $<TARGET_FILE:camera_ctl>
+                #         ${BOARD_HOME}/
+                # COMMAND sudo cp $<TARGET_FILE:camera_viewer>
+                #         ${BOARD_HOME}/
                 COMMENT "Copying programs to board"
                 )

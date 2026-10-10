@@ -2,6 +2,195 @@
 #include <stdio.h>
 #include <jpeglib.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <unistd.h>
+
+static struct stream_client *list_tail(struct stream_client *head) {
+    struct stream_client *res = head;
+
+    while (res->next) {
+        res = res->next;
+    }
+
+    return res;
+}
+
+static struct stream_client *list_prev(struct stream_client *head, struct stream_client *item) {
+    if (item == NULL)
+        return NULL;
+
+    struct stream_client *current = head;
+
+    while (current->next) {
+        if (current->next == item)
+            return current;
+
+        current = current->next;
+    }
+
+    return NULL;
+}
+
+static void list_add(struct stream_client *head, struct stream_client *item) {
+    struct stream_client *tail = list_tail(head);
+    item->next = NULL;
+    tail->next = item;
+}
+
+static int list_del(struct stream_client *head, struct stream_client *item) {
+    struct stream_client *prev = list_prev(head, item);
+
+    if (prev == NULL)
+        return -1;
+
+    prev->next = item->next;
+    item->next = NULL;
+    return 0;
+}
+
+struct stream_client *stream_client_create(int fd, void *(*routine)(void *)) {
+    struct stream_client *client = malloc(sizeof(struct stream_client));
+    if (!client)
+        return NULL;
+
+    client->fd = fd;
+    client->running = 0;
+    client->routine = routine;
+    client->next = NULL;
+    client->parent = NULL;
+
+    return client;
+}
+
+int stream_client_destroy(struct stream_client *client) {
+    int ret = 0;
+    // 从列表中移除
+    if (client->parent) {
+        ret = list_del(client->parent->head, client);
+    }
+
+    // 删除线程
+    if (client->running) {
+        pthread_cancel(client->thread);
+        client->running = 0;
+    }
+    pthread_join(client->thread, NULL);
+
+    // 关闭 socket
+    if (client->fd > 0)
+        close(client->fd);
+
+    free(client);
+
+    return ret;
+}
+
+// 向流管理器中添加流客户，并启动客户线程
+int stream_client_add(struct stream_manager *manager, struct stream_client *client) {
+    pthread_mutex_lock(&manager->mutex);
+
+    if (manager->client_count == MAX_CLIENTS || 
+        client == NULL || 
+        client->fd <= 0) {
+            pthread_mutex_unlock(&manager->mutex);
+            return -1;
+        }
+
+    // 加入链表
+    list_add(manager->head, client);
+    manager->client_count++;
+    client->parent = manager;
+
+    // 创建线程
+    client->running = 1;
+    if (pthread_create(&client->thread, NULL, client->routine, client) != 0) {
+        if (list_del(manager->head, client) == 0) {
+            manager->client_count--;
+            client->running = 0;
+
+            pthread_mutex_unlock(&manager->mutex);
+
+            return -1;
+        }
+    }
+
+    pthread_mutex_unlock(&manager->mutex);
+
+    return 0;
+}
+
+// 删除流管理器中的流客户，并销毁
+void stream_client_del(struct stream_manager *manager, struct stream_client *client) {
+    if (manager->client_count == 0 || client == NULL)
+        return;
+
+    // 将 client 销毁
+    pthread_mutex_lock(&manager->mutex);
+
+    if (stream_client_destroy(client) == 0)
+        manager->client_count--;
+    
+    pthread_mutex_unlock(&manager->mutex);
+}
+
+// 删除所有 client 线程
+void stream_client_del_all(struct stream_manager *manager) {
+    struct stream_client *client = list_tail(manager->head);
+    while (client && client != manager->head) {
+        stream_client_del(manager, client);
+        client = list_tail(manager->head);
+    }
+}
+
+struct stream_manager *stream_manager_create(void *(*routine)(void *)) {
+    if (routine == NULL)
+        return NULL;
+
+    struct stream_manager *manager = calloc(1, sizeof(struct stream_manager));
+    if (!manager)
+        return NULL;
+
+    manager->head = malloc(sizeof(struct stream_client));
+    if (!manager->head) {
+        free(manager);
+        return NULL;
+    }
+
+    pthread_cond_init(&manager->frame_cond, NULL);
+    pthread_mutex_init(&manager->mutex, NULL);
+    pthread_mutex_init(&manager->frame_mutex, NULL);
+
+    if (pthread_create(&manager->thread, NULL, routine, manager) != 0) {
+        pthread_mutex_destroy(&manager->frame_mutex);
+        pthread_mutex_destroy(&manager->mutex);
+        pthread_cond_destroy(&manager->frame_cond);
+        free(manager->head);
+        free(manager);
+        return NULL;
+    }
+
+    return manager;
+}
+
+void stream_manager_destroy(struct stream_manager *manager) {
+    if (manager == NULL)
+        return;
+
+    stream_client_del_all(manager);
+
+    pthread_cancel(manager->thread);
+    pthread_join(manager->thread, NULL);
+
+    pthread_mutex_destroy(&manager->frame_mutex);
+    pthread_mutex_destroy(&manager->mutex);
+    pthread_cond_destroy(&manager->frame_cond);
+
+    if (manager->buf_jpeg)
+        free(manager->buf_jpeg);
+
+    free(manager->head);
+    free(manager);
+}
 
 #define RGB565_RGB888(src, dst) do { \
     unsigned short src_pix = *(unsigned short *)src; \

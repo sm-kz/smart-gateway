@@ -80,6 +80,19 @@ button {
     background-color: rgb(212, 26, 41);
 }
 
+#stream-button {
+    background-color: rgb(103, 214, 248);
+}
+
+#stream-button:hover {
+    translate: 0 -2px;
+    box-shadow: 2px 1px 2px black;
+}
+
+#stream-button:active {
+    background-color: rgb(103, 129, 245);
+}
+
 #camera-display {
     display: flex;
     justify-content: center;
