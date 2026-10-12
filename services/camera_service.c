@@ -26,6 +26,34 @@ static void sigterm_handler (int sig) {
     exit_requested = 1;
 }
 
+int camera_recv_requeset(int client_fd, struct camera_request *request) {
+    int n = recv_all(client_fd, request, sizeof(*request));
+    if (n != sizeof(*request)) {
+        if (n < 0)
+            perror("[Camera Service] recv");
+        
+        fprintf(stderr, "[Camera Service] Error: %d bytes data is expected to receive, "
+                "but %d bytes received\r\n", sizeof(*request), n);
+
+        return EINVAL;
+    }
+
+    /* 数据校验 */
+    if (request->magic != CAMERA_MAGIC || 
+        request->version != CAMERA_VERSION) {
+        fprintf(stderr, "[Camera Service] Invalid camera magic or version\r\n");
+        return EPROTO;
+    }
+
+    /* 指令检查 */
+    if (request->command >= CAMERA_CMD_MAX) {
+        fprintf(stderr, "[Camera Service] Invalid camera command\r\n");
+        return EBADRQC;
+    }
+
+    return 0;
+}
+
 void *camera_service_routine (void *arg) {
     struct camera *camera = arg;
     struct camera_ring_buffer *shared;
@@ -87,6 +115,19 @@ exit:
     pthread_exit(NULL);
 }
 
+static int pipe_ready(int fd, const int ready) {
+    if (fd >= 0) {
+        char res = ready;
+        if (write(fd, &res, 1) != 1) {
+            perror("[Camera Service] ready notify");
+            return -1;
+        }
+        close(fd);
+    }
+
+    return 0;
+}
+
 int camera_service(int pipe) {
     /* 初始化摄像头 */
     camera_init(&camera, 1);
@@ -143,13 +184,8 @@ int camera_service(int pipe) {
         goto error1;
 
     /* 初始化就绪，将就绪状态写入管道 */
-    if (pipe >= 0) {
-        char ready = 1;
-        if (write(pipe, &ready, 1) != 1) {
-            perror("[Camera Service] ready notify");
-            goto error2;
-        }
-        close(pipe);
+    if (pipe_ready(pipe, 1) < 0) {
+        goto error2;
     }
     
     int client_fd;
@@ -169,31 +205,14 @@ int camera_service(int pipe) {
 
         /* 接收 */
         struct camera_request req;
-        if (recv_all(client_fd, &req, sizeof(req)) != sizeof(req))
-            goto error3;
+        int ret;
+        ret = camera_recv_requeset(client_fd, &req);
 
         struct camera_response resp = {0};
-        resp.magic = req.magic;
-        resp.version = req.version;
+        resp.magic = CAMERA_MAGIC;
+        resp.version = CAMERA_VERSION;
         resp.command = req.command;
-        resp.result = 0;
-
-        /* 数据校验 */
-        if (req.magic != CAMERA_MAGIC || 
-            req.version != CAMERA_VERSION) {
-            fprintf(stderr, "[Camera Service] Invalid camera magic or version\r\n");
-            resp.result = EINVAL;
-            send(client_fd, &resp, sizeof(resp), 0);
-            goto error3;
-        }
-
-        /* 指令检查 */
-        if (req.command >= CAMERA_CMD_MAX) {
-            fprintf(stderr, "[Camera Service] Invalid camera command\r\n");
-            resp.result = EBADRQC;
-            send(client_fd, &resp, sizeof(resp), 0);
-            goto error3;
-        }
+        resp.result = ret;
 
         // 记录旧状态，避免重复开启或关闭
         int old_state = camera_service_status;
@@ -220,7 +239,8 @@ int camera_service(int pipe) {
         
         if (send_all(client_fd, &resp, sizeof(resp)) < 0) {
             perror("[Camera Service] send");
-            goto error3;
+            close(client_fd);
+            continue;
         }
 
         // 线程处理
@@ -230,7 +250,8 @@ int camera_service(int pipe) {
                 camera_stream_on(&camera);
                 if (pthread_create(&stream_thread, NULL, camera_service_routine, &camera) != 0) {
                     fprintf(stderr, "[Camera Service] Error: pthread_create failed\r\n");
-                    goto error3;
+                    close(client_fd);
+                    continue;
                 }
                 stream_thread_valid = 1;
             } else if (stream_thread_valid){
@@ -271,5 +292,6 @@ error1:
     unlink(CAMERA_SOCK_PATH);
 error:
     camera_close(&camera);
+    pipe_ready(pipe, 0);
     return -1;
 }

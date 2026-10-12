@@ -254,8 +254,8 @@ static void http_mjpeg_header(int fd) {
     /* MJPEG 响应头 */
     const char *header =
     "HTTP/1.1 200 OK\r\n"
-    "Content-Type: multipart/x-mixed-replace; boundary=frame\r\n"
-    "Cache-Control: no-store\r\n"
+    "Content-Type: multipart/x-mixed-replace; boundary=frame\r\n"   // 重点是这个首部
+    "Cache-Control: no-store\r\n"   // 千万不能缓存，因为图像可能会静止
     "Access-Control-Allow-Origin: *\r\n" 
     "Connection: close\r\n"         // close 表示不复用这个连接处理下一个 HTTP 请求
     "\r\n";
@@ -469,13 +469,26 @@ static void *upload_routine(void *arg) {
     return NULL;
 }
 
+static int pipe_ready(int fd, const int ready) {
+    if (fd >= 0) {
+        char res = ready;
+        if (write(fd, &res, 1) != 1) {
+            perror("[Web Service] ready notify");
+            return -1;
+        }
+        close(fd);
+    }
+
+    return 0;
+}
+
 int web_service(int pipe) {
     /* 初始化 SIGINT 信号处理 */
     struct sigaction sa = {0};
     sa.sa_handler = sigterm_handler;
     sigemptyset(&sa.sa_mask);
     if (sigaction(SIGTERM, &sa, NULL) < 0) {
-        perror("[Camera Service] sigaction\r\n");
+        perror("[Web Service] sigaction\r\n");
         goto error;
     }
 
@@ -518,13 +531,8 @@ int web_service(int pipe) {
     }
 
     /* 初始化就绪，将就绪状态写入管道 */
-    if (pipe >= 0) {
-        char ready = 1;
-        if (write(pipe, &ready, 1) != 1) {
-            perror("[Web Service] ready notify");
-            goto error2;
-        }
-        close(pipe);
+    if (pipe_ready(pipe, 1) < 0) {
+        goto error2;
     }
 
     int client_fd = -1;
@@ -553,5 +561,6 @@ error1:
     camera_client_close(&web_cclient);
 error:
     close(server_fd);
+    pipe_ready(pipe, 0);
     return -1;
 }
