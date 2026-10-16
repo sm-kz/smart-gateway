@@ -72,6 +72,11 @@ add_executable(camera_viewer ${PROJECT_SOURCE_DIR}/tools/camera_viewer.c)
 target_include_directories(camera_viewer PRIVATE ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(camera_viewer PRIVATE camera_client rt)
 
+# sensor_ctl 调试程序
+add_executable(sensor_ctl ${PROJECT_SOURCE_DIR}/tools/sensor_ctl.c)
+target_include_directories(sensor_ctl PRIVATE ${PROJECT_SOURCE_DIR}/include)
+target_link_libraries(sensor_ctl PRIVATE ipc_utils)
+
 
 set(BOARD_HOME /home/rance/linux/nfs/rootfs/home/menoa/program)
 add_custom_target(send
@@ -82,5 +87,7 @@ add_custom_target(send
                 #         ${BOARD_HOME}/
                 # COMMAND sudo cp $<TARGET_FILE:camera_viewer>
                 #         ${BOARD_HOME}/
+                COMMAND sudo cp $<TARGET_FILE:sensor_ctl>
+                        ${BOARD_HOME}/
                 COMMENT "Copying programs to board"
                 )

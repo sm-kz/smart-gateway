@@ -473,10 +473,11 @@ static int pipe_ready(int fd, const int ready) {
     if (fd >= 0) {
         char res = ready;
         if (write(fd, &res, 1) != 1) {
-            perror("[Web Service] ready notify");
+            perror("[Sensor Service] ready notify");
             return -1;
         }
         close(fd);
+        fd = -1;
     }
 
     return 0;

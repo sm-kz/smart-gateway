@@ -11,6 +11,9 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <stdlib.h>
+#include <limits.h>
+#include <math.h>
 
 #define MPU6050_DEV_PATH    "/sys/bus/iio/devices/iio:device1"
 #define ACCEL_SCALE         MPU6050_DEV_PATH"/in_accel_scale"
@@ -44,6 +47,7 @@ int fd_temp_offset;
 
 static sig_atomic_t exit_requested = 0;
 static sig_atomic_t sensor_state = 1;   // mpu6050 驱动没有低功耗模式或关机的接口，该变量会一直为 1
+static pthread_mutex_t mutex;
 
 int sensor_files_open() {
     fd_accel_scale = open(ACCEL_SCALE, O_RDONLY);
@@ -185,24 +189,64 @@ int sensor_recv_requeset(int client_fd, struct sensor_request *request) {
     return 0;
 }
 
+static int iio_read_int(int fd, int *res) {
+    char buf[64];
+    char *end;
+
+    ssize_t n = pread(fd, buf, sizeof(buf) - 1, 0);
+    if (n <= 0)
+        return -1;
+
+    buf[n] = '\0';
+    errno = 0;
+
+    long val = strtol(buf, &end, 10);
+
+    if (errno != 0 || end == buf || val > INT_MAX || val < INT_MIN)
+        return -1;
+
+    *res = val;
+    return 0;
+}
+
+static int iio_read_float(int fd, float *res) {
+    char buf[64];
+    char *end;
+
+    ssize_t n = pread(fd, buf, sizeof(buf) - 1, 0);
+    if (n <= 0)
+        return -1;
+
+    buf[n] = '\0';
+    errno = 0;
+
+    float val = strtof(buf, &end);
+
+    if (errno != 0 || end == buf || !isfinite(val))
+        return -1;
+
+    *res = val;
+    return 0;
+}
+
 int sensor_get_accels(float *x, float *y, float *z) {
     float scale;
     int x_raw, y_raw, z_raw;
     int x_bias, y_bias, z_bias;
 
-    if (pread(fd_accel_scale, &scale, sizeof(scale), 0) != sizeof(scale))
+    if (iio_read_float(fd_accel_scale, &scale))
         return -1;
-    if (pread(fd_accel_x_raw, &x_raw, sizeof(x_raw), 0) != sizeof(x_raw))
+    if (iio_read_int(fd_accel_x_raw, &x_raw))
         return -1;
-    if (pread(fd_accel_y_raw, &y_raw, sizeof(y_raw), 0) != sizeof(y_raw))
+    if (iio_read_int(fd_accel_y_raw, &y_raw))
         return -1;
-    if (pread(fd_accel_z_raw, &z_raw, sizeof(z_raw), 0) != sizeof(z_raw))
+    if (iio_read_int(fd_accel_z_raw, &z_raw))
         return -1;
-    if (pread(fd_accel_x_bias, &x_bias, sizeof(x_bias), 0) != sizeof(x_bias))
+    if (iio_read_int(fd_accel_x_bias, &x_bias))
         return -1;
-    if (pread(fd_accel_y_bias, &y_bias, sizeof(y_bias), 0) != sizeof(y_bias))
+    if (iio_read_int(fd_accel_y_bias, &y_bias))
         return -1;
-    if (pread(fd_accel_z_bias, &z_bias, sizeof(z_bias), 0) != sizeof(z_bias))
+    if (iio_read_int(fd_accel_z_bias, &z_bias))
         return -1;
 
     *x = (x_raw - x_bias) * scale;
@@ -217,19 +261,19 @@ int sensor_get_gyros(float *x, float *y, float *z) {
     int x_raw, y_raw, z_raw;
     int x_bias, y_bias, z_bias;
 
-    if (pread(fd_gyro_scale, &scale, sizeof(scale), 0) != sizeof(scale))
+    if (iio_read_float(fd_gyro_scale, &scale))
         return -1;
-    if (pread(fd_gyro_x_raw, &x_raw, sizeof(x_raw), 0) != sizeof(x_raw))
+    if (iio_read_int(fd_gyro_x_raw, &x_raw))
         return -1;
-    if (pread(fd_gyro_y_raw, &y_raw, sizeof(y_raw), 0) != sizeof(y_raw))
+    if (iio_read_int(fd_gyro_y_raw, &y_raw))
         return -1;
-    if (pread(fd_gyro_z_raw, &z_raw, sizeof(z_raw), 0) != sizeof(z_raw))
+    if (iio_read_int(fd_gyro_z_raw, &z_raw))
         return -1;
-    if (pread(fd_gyro_x_bias, &x_bias, sizeof(x_bias), 0) != sizeof(x_bias))
+    if (iio_read_int(fd_gyro_x_bias, &x_bias))
         return -1;
-    if (pread(fd_gyro_y_bias, &y_bias, sizeof(y_bias), 0) != sizeof(y_bias))
+    if (iio_read_int(fd_gyro_y_bias, &y_bias))
         return -1;
-    if (pread(fd_gyro_z_bias, &z_bias, sizeof(z_bias), 0) != sizeof(z_bias))
+    if (iio_read_int(fd_gyro_z_bias, &z_bias))
         return -1;
 
     *x = (x_raw - x_bias) * scale;
@@ -244,11 +288,11 @@ int sensor_get_temp(float *temp) {
     int temp_raw;
     int temp_offset;
 
-    if (pread(fd_temp_scale, &scale, sizeof(scale), 0) != sizeof(scale))
+    if (iio_read_float(fd_temp_scale, &scale))
         return -1;
-    if (pread(fd_temp_raw, &temp_raw, sizeof(temp_raw), 0) != sizeof(temp_raw))
+    if (iio_read_int(fd_temp_raw, &temp_raw))
         return -1;
-    if (pread(fd_temp_offset, &temp_offset, sizeof(temp_offset), 0) != sizeof(temp_offset))
+    if (iio_read_int(fd_temp_offset, &temp_offset))
         return -1;
     
     *temp = (temp_raw - temp_offset) * scale;
@@ -283,6 +327,7 @@ static int pipe_ready(int fd, const int ready) {
             return -1;
         }
         close(fd);
+        fd = -1;
     }
 
     return 0;
@@ -353,12 +398,31 @@ int sensor_service(int pipe) {
 
         resp.state = sensor_state;
 
+        /* 根据指令执行响应的操作 */
+        switch (req.command)
+        {
+        case SENSOR_CMD_DATA:
+            if (sensor_get_data(&resp.data) < 0)
+                resp.result = EIO;
+            break;
+
+        default:
+            break;
+        }
+
         if (send_all(client_fd, &resp, sizeof(resp)) < 0) {
             perror("[Sensor Service] send");
             close(client_fd);
             continue;
         }
+
+        close(client_fd);
     }
+
+    unlink(SENSOR_SOCK_PATH);
+    close(server_fd);
+    sensor_files_close();
+    return 0;
 
 error2:
     unlink(SENSOR_SOCK_PATH);
