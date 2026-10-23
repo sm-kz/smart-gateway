@@ -14,6 +14,9 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <math.h>
+#include <pthread.h>
+#include <time.h>
+
 
 #define MPU6050_DEV_PATH    "/sys/bus/iio/devices/iio:device1"
 #define ACCEL_SCALE         MPU6050_DEV_PATH"/in_accel_scale"
@@ -34,6 +37,13 @@
 #define TEMP_RAW            MPU6050_DEV_PATH"/in_temp_raw"
 #define TEMP_OFFSET         MPU6050_DEV_PATH"/in_temp_offset"
 
+#define PI      3.141592653589f
+#define EPS     1e-6f
+#define RAD_TO_DEG(rad)     (180.0f / PI * rad)
+#define DEG_TO_RAD(deg)     (PI / 180.0f * deg)
+
+#define SAMPLE_PERIOD     10 // ms
+
 // MPU6050 IIO 设备属性文件描述符
 int fd_accel_scale;
 int fd_accel_x_raw, fd_accel_y_raw, fd_accel_z_raw;
@@ -45,9 +55,22 @@ int fd_temp_scale;
 int fd_temp_raw;
 int fd_temp_offset;
 
+/* 互补滤波器, 弧度制 */
+struct {
+    float roll;
+    float pitch;
+    float yaw;
+
+    float tau;
+    int initialized;
+} attitude_filter;
+
+/* 服务程序内部维护的传感器数据 */
+static struct sensor_data private_sdata = {0};
+pthread_mutex_t mutex;  // 数据锁
+
 static sig_atomic_t exit_requested = 0;
 static sig_atomic_t sensor_state = 1;   // mpu6050 驱动没有低功耗模式或关机的接口，该变量会一直为 1
-static pthread_mutex_t mutex;
 
 int sensor_files_open() {
     fd_accel_scale = open(ACCEL_SCALE, O_RDONLY);
@@ -276,9 +299,9 @@ int sensor_get_gyros(float *x, float *y, float *z) {
     if (iio_read_int(fd_gyro_z_bias, &z_bias))
         return -1;
 
-    *x = (x_raw - x_bias) * scale;
-    *y = (y_raw - y_bias) * scale;
-    *z = (z_raw - z_bias) * scale;
+    *x = DEG_TO_RAD((x_raw - x_bias) * scale);
+    *y = DEG_TO_RAD((y_raw - y_bias) * scale);
+    *z = DEG_TO_RAD((z_raw - z_bias) * scale);
 
     return 0;
 }
@@ -300,7 +323,7 @@ int sensor_get_temp(float *temp) {
     return 0;
 }
 
-int sensor_get_data(struct sensor_data *data) {
+int sensor_get_data_raw(struct sensor_data *data) {
     if (sensor_get_accels(&data->accel_x, &data->accel_y, &data->accel_z)) {
         fprintf(stderr, "[Sensor Service] Error: sensor_get_accels\r\n");
         return -1;
@@ -317,6 +340,126 @@ int sensor_get_data(struct sensor_data *data) {
     }
 
     return 0;
+}
+
+static float wrap_pi(float angle) {
+    return remainderf(angle, 2 * PI);
+}
+
+void attitude_init(float tau) {
+    memset(&attitude_filter, 0, sizeof(attitude_filter));
+    attitude_filter.tau = tau > 0.0f ? tau : 0.5f;
+}
+
+int attitude_update(struct sensor_data *data, float dt) {
+    if (!data || !isfinite(dt) || dt <= 0 || dt > 0.4)
+        return -1;
+
+    float norm = sqrtf(data->accel_x * data->accel_x +
+                       data->accel_y * data->accel_y +
+                       data->accel_z * data->accel_z);
+
+    if (norm < EPS)
+        return -1;
+
+    // 加速度计计算 roll / pitch
+    float roll_acc = atan2f(data->accel_y, data->accel_z);
+    float pitch_acc = atan2f(
+                            -data->accel_x,
+                            sqrtf(data->accel_y * data->accel_y + data->accel_z * data->accel_z)
+                        );
+
+    // 首次采样，利用重力加速度初始化
+    if (!attitude_filter.initialized) {
+        attitude_filter.roll = roll_acc;
+        attitude_filter.pitch = pitch_acc;
+        attitude_filter.yaw = 0;
+        attitude_filter.initialized = 1;
+        return 0;
+    }
+
+    float roll = attitude_filter.roll;
+    float pitch = attitude_filter.pitch;
+
+    float sr = sinf(roll);
+    float cr = cosf(roll);
+    float cp = cosf(pitch);
+
+    // 欧拉角在正负90度附近存在奇异性
+    if (fabsf(cp) < 0.01f) {
+        attitude_filter.roll = roll_acc;
+        attitude_filter.pitch = pitch_acc;
+
+        // 保留当前相对 Yaw，避免突然归零
+        return 0;
+    }
+
+    float tp = tanf(pitch);
+
+    // 机体角速度转为欧拉角变化率
+    float roll_rate = data->gyro_x + sr * tp * data->gyro_y + cr * tp * data->gyro_z;
+    float pitch_rate = cr * data->gyro_y - sr * data->gyro_z;
+    float yaw_rate = sr / cp * data->gyro_y + cr / cp * data->gyro_z;
+
+    // 陀螺仪预测
+    float roll_gyro = roll + roll_rate * dt;
+    float pitch_gyro = pitch + pitch_rate * dt;
+    float yaw_gyro = attitude_filter.yaw + yaw_rate * dt;
+
+    // 根据采样间隔计算滤波系数
+    float alpha = attitude_filter.tau / (attitude_filter.tau + dt);
+
+    // roll 使用角度差修正，避免180度跳变
+    float roll_error = wrap_pi(roll_acc - roll_gyro);
+
+    attitude_filter.roll = wrap_pi(roll_gyro + (1.0f - alpha) * roll_error);
+    attitude_filter.pitch = wrap_pi(alpha * pitch_gyro + (1.0f - alpha) * pitch_acc);
+    attitude_filter.yaw = wrap_pi(yaw_gyro);
+
+    data->roll = RAD_TO_DEG(attitude_filter.roll);
+    data->pitch = RAD_TO_DEG(attitude_filter.pitch);
+    data->yaw = RAD_TO_DEG(attitude_filter.yaw);
+
+    return 0;
+}
+
+void *sample_routine(void *arg) {
+    /* 初始化滤波器 */
+    attitude_init(0.2f);
+
+    static struct timespec start_time = {0};
+    static struct timespec end_time = {0};
+
+    while (!exit_requested) {
+        struct sensor_data data = {0};
+        // 获取原始数据
+        if (sensor_get_data_raw(&data))
+            continue;
+
+        clock_gettime(CLOCK_MONOTONIC, &end_time);
+
+        double real_interval;
+        // 使用系统时间计算 dt，避免误差积累
+        if (start_time.tv_sec == 0 && start_time.tv_nsec == 0)
+            real_interval = SAMPLE_PERIOD / 1000.0;
+        else
+            real_interval = end_time.tv_sec - start_time.tv_sec + (end_time.tv_nsec - start_time.tv_nsec) * 1e-9;
+
+        clock_gettime(CLOCK_MONOTONIC, &start_time);
+
+        // 计算并更新 roll、pitch、yaw
+        if (attitude_update(&data, real_interval))
+            continue;
+
+        // 更新私有数据
+        pthread_mutex_lock(&mutex);
+        private_sdata = data;
+        pthread_mutex_unlock(&mutex);
+        
+        usleep(SAMPLE_PERIOD * 1000);
+    }
+
+    return NULL;
 }
 
 static int pipe_ready(int fd, const int ready) {
@@ -366,9 +509,19 @@ int sensor_service(int pipe) {
         goto error2;
     }
 
+    /* 初始化数据锁 */
+    pthread_mutex_init(&mutex, NULL);
+
+    /* 创建采样线程 */
+    pthread_t sample_pid;
+    if (pthread_create(&sample_pid, NULL, sample_routine, NULL)) {
+        fprintf(stderr, "[Sensor Service] Error: pthread_create");
+        goto error2;
+    }
+
     /* 初始化状态填入管道 */
     if (pipe_ready(pipe, 1) < 0) {
-        goto error2;
+        goto error3;
     }
 
     int client_fd;
@@ -402,8 +555,9 @@ int sensor_service(int pipe) {
         switch (req.command)
         {
         case SENSOR_CMD_DATA:
-            if (sensor_get_data(&resp.data) < 0)
-                resp.result = EIO;
+            pthread_mutex_lock(&mutex);
+            resp.data = private_sdata;
+            pthread_mutex_unlock(&mutex);
             break;
 
         default:
@@ -419,11 +573,18 @@ int sensor_service(int pipe) {
         close(client_fd);
     }
 
+    pthread_cancel(sample_pid);
+    pthread_join(sample_pid, NULL);
+    pthread_mutex_destroy(&mutex);
     unlink(SENSOR_SOCK_PATH);
     close(server_fd);
     sensor_files_close();
     return 0;
 
+error3:
+    pthread_cancel(sample_pid);
+    pthread_join(sample_pid, NULL);
+    pthread_mutex_destroy(&mutex);
 error2:
     unlink(SENSOR_SOCK_PATH);
 error1:

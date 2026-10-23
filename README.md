@@ -82,7 +82,8 @@ httpd -f -p 8000 -h /path/to/web/
 
 > index.html 不要用 file:// 协议打开，因为这样在开启网络视频流时，浏览器会升级跨来源图片请求，将请求转为TLS握手。而现有的服务程序只支持 HTTP 请求，这就导致了失败。而使用方法 1 的打开方式可行，是因为该方式下，页面文件的来源是 http，浏览器会根据页面来源和安全策略决定如何处理 JS 发起的资源请求。
 
-#### web 目录结构
-- app.js: web 后端程序
-- index.html: web ui 页面
-- style.css: 页面样式文件
+**httpd 配置**
+web 页面使用了svg文件，httpd默认不会知道此类文件的`Content-Type`，所以需要在 web 文件夹下创建 httpd.conf，添加下面一行
+```text
+.svg:image/svg+xml
+```

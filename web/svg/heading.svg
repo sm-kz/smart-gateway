@@ -1,0 +1,138 @@
+
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 300 300"
+     width="300" height="300">
+
+    <!-- 外部仪表底座 -->
+    <circle cx="150" cy="150" r="145"
+            fill="#252a32"
+            stroke="#515965"
+            stroke-width="4"/>
+
+    <!-- 可旋转航向盘 -->
+    <g id="heading-rotation">
+
+        <!-- 表盘背景 -->
+        <circle cx="150" cy="150" r="120"
+                fill="#202d3a"
+                stroke="#d1d5db"
+                stroke-width="3"/>
+
+        <!-- 主方向文字 -->
+        <g fill="#ffffff"
+           font-family="Arial, sans-serif"
+           font-size="23"
+           font-weight="bold"
+           text-anchor="middle"
+           dominant-baseline="middle">
+
+            <text x="150" y="65">N</text>
+            <text x="235" y="150">E</text>
+            <text x="150" y="235">S</text>
+            <text x="65" y="150">W</text>
+        </g>
+
+        <!-- 45°方向刻度 -->
+        <g stroke="#ffffff"
+           stroke-width="2">
+
+            <line x1="150" y1="32"
+                  x2="150" y2="46"/>
+
+            <line x1="150" y1="254"
+                  x2="150" y2="268"/>
+
+            <line x1="32" y1="150"
+                  x2="46" y2="150"/>
+
+            <line x1="254" y1="150"
+                  x2="268" y2="150"/>
+
+            <line x1="67" y1="67"
+                  x2="77" y2="77"/>
+
+            <line x1="233" y1="67"
+                  x2="223" y2="77"/>
+
+            <line x1="67" y1="233"
+                  x2="77" y2="223"/>
+
+            <line x1="233" y1="233"
+                  x2="223" y2="223"/>
+        </g>
+
+        <!-- 次级刻度 -->
+        <g stroke="#94a3b8"
+           stroke-width="1.5">
+
+            <line x1="150" y1="32"
+                  x2="150" y2="40"
+                  transform="rotate(30 150 150)"/>
+
+            <line x1="150" y1="32"
+                  x2="150" y2="40"
+                  transform="rotate(60 150 150)"/>
+
+            <line x1="150" y1="32"
+                  x2="150" y2="40"
+                  transform="rotate(120 150 150)"/>
+
+            <line x1="150" y1="32"
+                  x2="150" y2="40"
+                  transform="rotate(150 150 150)"/>
+
+            <line x1="150" y1="32"
+                  x2="150" y2="40"
+                  transform="rotate(210 150 150)"/>
+
+            <line x1="150" y1="32"
+                  x2="150" y2="40"
+                  transform="rotate(240 150 150)"/>
+
+            <line x1="150" y1="32"
+                  x2="150" y2="40"
+                  transform="rotate(300 150 150)"/>
+
+            <line x1="150" y1="32"
+                  x2="150" y2="40"
+                  transform="rotate(330 150 150)"/>
+        </g>
+
+    </g>
+
+    <!-- 顶部固定航向指示三角形 -->
+    <path d="M150 25
+             L140 44
+             H160 Z"
+          fill="#ffc247"/>
+
+    <!-- 固定飞机符号 -->
+    <g stroke="#ffc247"
+       stroke-width="5"
+       stroke-linecap="round"
+       fill="none">
+
+        <!-- 机身 -->
+        <line x1="150" y1="105"
+              x2="150" y2="195"/>
+
+        <!-- 机翼 -->
+        <line x1="115" y1="145"
+              x2="185" y2="145"/>
+
+        <!-- 尾翼 -->
+        <line x1="135" y1="185"
+              x2="165" y2="185"/>
+    </g>
+
+    <!-- 机头 -->
+    <path d="M150 95
+             L142 113
+             H158 Z"
+          fill="#ffc247"/>
+
+    <!-- 中心点 -->
+    <circle cx="150" cy="150" r="5"
+            fill="#ffc247"/>
+
+</svg>

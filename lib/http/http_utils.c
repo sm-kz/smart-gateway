@@ -1,4 +1,5 @@
 #include "http_utils.h"
+#include "ipc_utils.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -51,4 +52,27 @@ size_t http_get_request_target(const char *request, char **target, size_t *size)
     (*target)[target_size - 1] = '\0';
 
     return target_size;
+}
+
+ssize_t http_send_response(int fd,
+                           const int status_code,
+                           const char *status_text,
+                           const char *content_type,
+                           const char *body) {
+    char response[1024];
+    int len = snprintf(response, sizeof(response),
+                    "HTTP/1.1 %d %s\r\n"
+                    "Content-Type: %s\r\n"
+                    "Content-Length: %zu\r\n"
+                    "Connection: close\r\n"
+                    "Access-Control-Allow-Origin: *\r\n"    // 跨域读取开发板返回的数据
+                    "\r\n"
+                    "%s",
+                    status_code, 
+                    status_text, 
+                    content_type,
+                    strlen(body), 
+                    body);
+
+    return send_all(fd, response, strlen(response));
 }

@@ -10,7 +10,7 @@
     <body>
         <h1>Smart Gateway</h1>
 
-        <div id="camera-panel">
+        <div class="panel">
             <div id="cemera-info">
                 <!-- 摄像头参数显示 -->
                 <div id="camera-params">
@@ -49,11 +49,77 @@
                 </div>
             </div>
 
-            <div id="camera-display">
+            <div class="display" id="camera-display">
                 <img alt="No Data">
+            </div>
+
+            <!-- 传感器信息 -->
+            <div id="sensor-info">
+                <table>
+                    <thead>
+                        <tr>
+                            <th scope="col">Sensor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="accels">
+                            <th scope="row">Accel-X:</th>
+                            <td id="accel-x">0</td>
+                        </tr>
+                        <tr class="accels">
+                            <th scope="row">Accel-Y:</th>
+                            <td id="accel-y">0</td>
+                        </tr>
+                        <tr class="accels">
+                            <th scope="row">Accel-Z:</th>
+                            <td id="accel-z">0</td>
+                        </tr>
+                        <tr class="gyros">
+                            <th scope="row">Gyro-X:</th>
+                            <td id="gyro-x">0</td>
+                        </tr>
+                        <tr class="gyros">
+                            <th scope="row">Gyro-Y:</th>
+                            <td id="gyro-y">0</td>
+                        </tr>
+                        <tr class="gyros">
+                            <th scope="row">Gyro-Z:</th>
+                            <td id="gyro-z">0</td>
+                        </tr>
+                        <tr class="gyros">
+                            <th scope="row">Roll:</th>
+                            <td id="roll">0</td>
+                        </tr>
+                        <tr class="gyros">
+                            <th scope="row">Pitch:</th>
+                            <td id="pitch">0</td>
+                        </tr>
+                        <tr class="gyros">
+                            <th scope="row">Yaw:</th>
+                            <td id="yaw">0</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 传感器数据可视化 -->
+            <div class="display" id="sensor-display">
+                <object id="attitude"
+                        data="svg/attitude.svg"
+                        type="image/svg+xml">
+                </object>
+
+                <object id="heading"
+                        data="svg/heading.svg"
+                        type="image/svg+xml">
+                </object>
             </div>
         </div>
     </body>
 
-    <script src="./app.js"></script>
+    <script src="js/utils.js" defer></script>
+    <script src="js/api.js" defer></script>
+    <script src="js/camera.js" defer></script>
+    <script src="js/sensor.js" defer></script>
+    <script src="js/app.js" defer></script>
 </html>

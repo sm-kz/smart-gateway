@@ -419,32 +419,6 @@ static int mpu6050_gyros_calib(struct mpu6050_struct* dev) {
     return ret;
 }
 
-static int mpu6050_accel_calib(struct mpu6050_struct* dev) {
-    int xvals[CALIBRATION_SAMPLES], yvals[CALIBRATION_SAMPLES], zvals[CALIBRATION_SAMPLES];
-    int avg = 0;
-    u16 retry = 9;
-    int ret = 0;
-
-    do {
-        ret = data_collection(dev, xvals, yvals, zvals, CALIBRATION_SAMPLES, 0);
-        if (ret) continue;
-
-        ret = data_anlysis(xvals, CALIBRATION_SAMPLES, &avg);
-        if (ret) continue;
-        else dev->accelx_off = avg;
-
-        ret = data_anlysis(yvals, CALIBRATION_SAMPLES, &avg);
-        if (ret) continue;
-        else dev->accely_off = avg;
-
-        ret = data_anlysis(zvals, CALIBRATION_SAMPLES, &avg);
-        if (ret) continue;
-        else dev->accelz_off = avg;
-    } while (ret && retry-- > 0);
-
-    return ret;
-}
-
 static void mpu6050_calibration(struct mpu6050_struct* dev) {
     int ret = 0;
 
@@ -458,16 +432,6 @@ static void mpu6050_calibration(struct mpu6050_struct* dev) {
     } else {
         printk("Gyros calibration failed\r\n");
     }
-
-    ret = mpu6050_accel_calib(dev);
-    if (!ret) {
-        printk("Accels calibration succeed. x: %d, y: %d, z: %d\r\n", 
-        dev->accelx_off, dev->accely_off, dev->accelz_off);
-    } else {
-        printk("Accels calibration failed\r\n");
-    }
-    
-    dev->temp_off = -35 * temp_scale.lsb / temp_scale.ntimes;
 }
 
 static int mpu6050_read_raw(struct iio_dev *indio_dev,

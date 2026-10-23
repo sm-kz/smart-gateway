@@ -1,0 +1,127 @@
+
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 300 300"
+     width="300" height="300">
+
+    <defs>
+        <clipPath id="horizon-clip">
+            <circle cx="150" cy="150" r="120"/>
+        </clipPath>
+    </defs>
+
+    <!-- 外部仪表底座 -->
+    <circle cx="150" cy="150" r="145"
+            fill="#252a32"
+            stroke="#515965"
+            stroke-width="4"/>
+
+    <!-- 姿态显示区域 -->
+    <g clip-path="url(#horizon-clip)">
+
+        <!-- Roll：绕仪表中心旋转 -->
+        <g id="horizon-rotation">
+
+            <!-- Pitch：上下平移 -->
+            <g id="horizon-translation">
+
+                <!-- 天空 -->
+                <rect x="-150" y="-300"
+                      width="600" height="450"
+                      fill="#4d9fc9"/>
+
+                <!-- 地面 -->
+                <rect x="-150" y="150"
+                      width="600" height="450"
+                      fill="#a67a51"/>
+
+                <!-- 地平线 -->
+                <line x1="-150" y1="150"
+                      x2="450" y2="150"
+                      stroke="#ffffff"
+                      stroke-width="3"/>
+
+                <!-- 俯仰刻度 -->
+                <g stroke="#ffffff"
+                   stroke-width="2"
+                   fill="none">
+
+                    <!-- +20° -->
+                    <line x1="115" y1="90"
+                          x2="185" y2="90"/>
+
+                    <!-- +10° -->
+                    <line x1="130" y1="120"
+                          x2="170" y2="120"/>
+
+                    <!-- -10° -->
+                    <line x1="130" y1="180"
+                          x2="170" y2="180"/>
+
+                    <!-- -20° -->
+                    <line x1="115" y1="210"
+                          x2="185" y2="210"/>
+                </g>
+
+                <!-- 俯仰刻度文字 -->
+                <g fill="#ffffff"
+                   font-family="Arial, sans-serif"
+                   font-size="12"
+                   text-anchor="start">
+
+                    <text x="191" y="94">20</text>
+                    <text x="176" y="124">10</text>
+                    <text x="176" y="184">10</text>
+                    <text x="191" y="214">20</text>
+                </g>
+
+            </g>
+        </g>
+    </g>
+
+    <!-- 固定横滚刻度 -->
+    <g stroke="#ffffff"
+       stroke-width="2"
+       stroke-linecap="round">
+
+        <line x1="150" y1="30"
+              x2="150" y2="43"/>
+
+        <line x1="90" y1="46"
+              x2="97" y2="58"/>
+
+        <line x1="210" y1="46"
+              x2="203" y2="58"/>
+
+        <line x1="46" y1="90"
+              x2="58" y2="97"/>
+
+        <line x1="254" y1="90"
+              x2="242" y2="97"/>
+    </g>
+
+    <!-- 顶部固定参考三角形 -->
+    <path d="M150 32 L142 46 L158 46 Z"
+          fill="#ffc247"/>
+
+    <!-- 固定飞机参考标记 -->
+    <path d="M88 150
+             H130
+             L150 162
+             L170 150
+             H212"
+          fill="none"
+          stroke="#ffc247"
+          stroke-width="6"
+          stroke-linecap="round"
+          stroke-linejoin="round"/>
+
+    <circle cx="150" cy="150" r="5"
+            fill="#ffc247"/>
+
+    <!-- 内部仪表边框 -->
+    <circle cx="150" cy="150" r="120"
+            fill="none"
+            stroke="#d1d5db"
+            stroke-width="3"/>
+
+</svg>

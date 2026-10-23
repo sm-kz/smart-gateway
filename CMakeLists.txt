@@ -18,9 +18,12 @@ target_link_directories(${APP} PRIVATE
                         ${USR_LIBS}/jpeg)
 
 target_link_libraries(${APP} PRIVATE
+    # 标准库
+    Threads::Threads
+    m
+
     # 第三方库
     jpeg 
-    Threads::Threads
 
     # 自定义库
     camera 
@@ -28,6 +31,7 @@ target_link_libraries(${APP} PRIVATE
     http_utils
     camera_client 
     display
+    sensor_client
     video_utils)
 
 find_package(Threads REQUIRED)
@@ -40,6 +44,7 @@ target_include_directories(ipc_utils PUBLIC ${PROJECT_SOURCE_DIR}/include)
 # http_utils 库
 add_library(http_utils STATIC ${PROJECT_SOURCE_DIR}/lib/http/http_utils.c)
 target_include_directories(http_utils PUBLIC ${PROJECT_SOURCE_DIR}/include)
+target_link_libraries(http_utils PRIVATE ipc_utils)
 
 # video_utils 库
 add_library(video_utils STATIC ${PROJECT_SOURCE_DIR}/lib/video/video_utils.c)
@@ -61,6 +66,11 @@ target_link_libraries(camera_client PRIVATE ipc_utils)
 # display 库
 add_library(display STATIC ${PROJECT_SOURCE_DIR}/lib/display/display.c)
 target_include_directories(display PUBLIC ${PROJECT_SOURCE_DIR}/include)
+
+# sensor_client 库
+add_library(sensor_client STATIC ${PROJECT_SOURCE_DIR}/lib/sensor_client/sensor_client.c)
+target_include_directories(sensor_client PUBLIC ${PROJECT_SOURCE_DIR}/include)
+target_link_libraries(sensor_client PRIVATE ipc_utils)
 
 # camera_ctl 调试程序
 add_executable(camera_ctl ${PROJECT_SOURCE_DIR}/tools/camera_ctl.c)

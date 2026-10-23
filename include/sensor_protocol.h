@@ -9,6 +9,7 @@
 #define SENSOR_VERSION  1
 
 struct sensor_data {
+    /* 原始数据 */
     float accel_x;
     float accel_y;
     float accel_z;
@@ -16,6 +17,11 @@ struct sensor_data {
     float gyro_x;
     float gyro_y;
     float gyro_z;
+
+    /* 姿态解算数据，角度制 */
+    float roll;
+    float pitch;
+    float yaw;
 
     float temperature;
 };

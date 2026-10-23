@@ -5,6 +5,7 @@
 #include "ipc_utils.h"
 #include "http_utils.h"
 #include "video_utils.h"
+#include "sensor_client.h"
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -21,34 +22,38 @@
 #include <unistd.h>
 
 #define WEB_PORT    16767
+#define WEB_API_MAX_LEN  64
 
 enum http_result {
     HTTP_CLOSE = 0,
     HTTP_TRANSFER = 1
 };
 
+/* 全局变量定义 */
 int server_fd = -1;
 
 struct display disp;
 
 struct stream_manager *stream_manager = NULL;
 struct camera_client web_cclient;   // web 服务主线程专用 client，主要用于指令发送。 子线程有各自的 client，用于获取帧
+struct sensor_client web_sclient;
 
 pthread_t display_thread;
-static void *display_routine(void *arg);
-static void *compress_routine(void *arg);
-static void *upload_routine(void *arg);
 
 static volatile sig_atomic_t displaying = 0;
 static volatile sig_atomic_t streaming = 0;
 static volatile sig_atomic_t exit_requested = 0;
+
+static void *display_routine(void *arg);
+static void *compress_routine(void *arg);
+static void *upload_routine(void *arg);
 
 static void sigterm_handler(int sig) {
     (void)sig;
     exit_requested = 1;
 }
 
-void response_to_json(struct camera_response *response, char *buf, size_t maxlen) {
+void camera_response_to_json(struct camera_response *response, char *buf, size_t maxlen) {
     char command_str[10] = "";
     char format_str[10] = "";
     char state_str[10] = "";
@@ -117,6 +122,67 @@ void response_to_json(struct camera_response *response, char *buf, size_t maxlen
     buf[maxlen - 1] = '\0';
 }
 
+void sensor_response_to_json(struct sensor_response *response, char *buf, size_t maxlen) {
+    char command_str[10] = "";
+    char state_str[10] = "";
+
+    switch (response->command)
+    {
+    case SENSOR_CMD_DATA:
+        sprintf(command_str, "Data");
+        break;
+    default:
+        break;
+    }
+
+    switch (response->state)
+    {
+    case 0:
+        sprintf(state_str, "Paused");
+        break;
+    case 1:
+        sprintf(state_str, "Running");
+        break;
+    default:
+        break;
+    }
+
+    snprintf(buf, maxlen,
+        "{\r\n"
+        "   \"magic\": \"%#x\",\r\n"
+        "   \"version\": %u,\r\n"
+        "   \"command\": \"%s\",\r\n"
+        "   \"result\": %d,\r\n"
+        "   \"state\": \"%s\",\r\n"
+        "   \"accel_x\": %.2f,\r\n"
+        "   \"accel_y\": %.2f,\r\n"
+        "   \"accel_z\": %.2f,\r\n"
+        "   \"gyro_x\": %.2f,\r\n"
+        "   \"gyro_y\": %.2f,\r\n"
+        "   \"gyro_z\": %.2f,\r\n"
+        "   \"roll\": %.2f,\r\n"
+        "   \"pitch\": %.2f,\r\n"
+        "   \"yaw\": %.2f\r\n"
+        "}",
+        response->magic,
+        response->version,
+        command_str,
+        response->result,
+        state_str,
+        response->data.accel_x,
+        response->data.accel_y,
+        response->data.accel_z,
+        response->data.gyro_x,
+        response->data.gyro_y,
+        response->data.gyro_z,
+        response->data.roll,
+        response->data.pitch,
+        response->data.yaw
+    );
+
+    buf[maxlen - 1] = '\0';
+}
+
 static enum http_result http_request_process(int client_fd) {
     char request[4096];
     ssize_t n = recv(client_fd, request, sizeof(request) - 1, 0);
@@ -125,9 +191,9 @@ static enum http_result http_request_process(int client_fd) {
     }
     request[n] = 0;
 
-    printf(" --------------- HTTP request ---------------\r\n");
-    printf("%s\r\n", request);
-    printf(" --------------------------------------------\r\n");
+    // printf(" --------------- HTTP request ---------------\r\n");
+    // printf("%s\r\n", request);
+    // printf(" --------------------------------------------\r\n");
 
     /* 请求提取与处理 */
     enum req_method method = http_get_request_method(request);
@@ -137,7 +203,7 @@ static enum http_result http_request_process(int client_fd) {
 
     int status_code = 0;
     char status_text[10] = "";
-    char body[258] = "";
+    char body[512] = "";
 
     switch(method) {
     case REQUEST_GET:
@@ -145,19 +211,20 @@ static enum http_result http_request_process(int client_fd) {
             status_code = 200;
             strcpy(status_text, "OK");
             strcpy(body, "Hello smart gateway");
-        } else if (!strcmp(target, "/api/status")) {
+        } else if (!strcmp(target, "/api/camera/status")) {
+            /* 获取摄像头状态 */
             struct camera_response resp;
             if (camera_client_command(&web_cclient, CAMERA_CMD_STATUS, &resp) == 0) {
                 status_code = 200;
                 strcpy(status_text, "OK");
-                response_to_json(&resp, body, sizeof(body));
+                camera_response_to_json(&resp, body, sizeof(body));
             } else {
                 status_code = 410;
                 strcpy(status_text, "Gone");
             }
-        } else if (!strcmp(target, "/api/stream")) {
+        } else if (!strcmp(target, "/api/camera/stream")) {
             if (stream_manager == NULL) {
-                fprintf(stderr, "[Web Service] Warning: /api/start must be sent before /api/stream\r\n");
+                fprintf(stderr, "[Web Service] Warning: /api/camera/start must be sent before /api/camera/stream\r\n");
                 return HTTP_CLOSE;
             }
 
@@ -176,6 +243,16 @@ static enum http_result http_request_process(int client_fd) {
 
             // 开启/关闭 视频流的请求属于长连接
             return HTTP_TRANSFER;
+        } else if (!strcmp(target, "/api/sensor/data")) {
+            struct sensor_response resp;
+            if (sensor_client_command(&web_sclient, SENSOR_CMD_DATA, &resp) == 0) {
+                status_code = 200;
+                strcpy(status_text, "OK");
+                sensor_response_to_json(&resp, body, sizeof(body));
+            } else {
+                status_code = 410;
+                strcpy(status_text, "Gone");
+            }
         } else {
             status_code = 404;
             strcpy(status_text, "Not Found");
@@ -183,7 +260,7 @@ static enum http_result http_request_process(int client_fd) {
         break;
 
     case REQUEST_POST:
-        if (!strcmp(target, "/api/start")) {
+        if (!strcmp(target, "/api/camera/start")) {
             if (camera_client_command(&web_cclient, CAMERA_CMD_START, NULL) == 0) {
                 status_code = 200;
                 strcpy(status_text, "OK");
@@ -206,7 +283,7 @@ static enum http_result http_request_process(int client_fd) {
                 status_code = 410;
                 strcpy(status_text, "Gone");
             }
-        } else if (!strcmp(target, "/api/stop")) {
+        } else if (!strcmp(target, "/api/camera/stop")) {
             if (camera_client_command(&web_cclient, CAMERA_CMD_STOP, NULL) == 0) {
                 status_code = 200;
                 strcpy(status_text, "OK");
@@ -234,19 +311,8 @@ static enum http_result http_request_process(int client_fd) {
         break;
     }
 
-    char response[512];
-    int len = snprintf(response, sizeof(response),
-                    "HTTP/1.1 %d %s\r\n"
-                    "Content-Type: application/json\r\n"
-                    "Content-Length: %zu\r\n"
-                    "Connection: close\r\n"
-                    "Access-Control-Allow-Origin: *\r\n"    // 跨域读取开发板返回的数据
-                    "\r\n"
-                    "%s",
-                    status_code, status_text,
-                    strlen(body), body);
+    http_send_response(client_fd, status_code, status_text, "application/json", body);
 
-    send_all(client_fd, response, strlen(response));
     return HTTP_CLOSE;
 }
 
@@ -523,6 +589,9 @@ int web_service(int pipe) {
         fprintf(stderr, "[Web Service] Error: camera_client_open\r\n");
         goto error;
     }
+
+    /* 连接本地传感器服务 */
+    sensor_client_init(&web_sclient);
 
     /* 管理 fb 设备 */
     display_init(&disp, 0);
