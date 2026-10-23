@@ -16,7 +16,13 @@
 #include <math.h>
 #include <pthread.h>
 #include <time.h>
+#include <signal.h>
 
+static volatile sig_atomic_t exit_requested = 0;
+static void sigterm_handler(int sig) {
+    (void)sig;
+    exit_requested = 1;
+}
 
 #define MPU6050_DEV_PATH    "/sys/bus/iio/devices/iio:device1"
 #define ACCEL_SCALE         MPU6050_DEV_PATH"/in_accel_scale"
@@ -69,7 +75,6 @@ struct {
 static struct sensor_data private_sdata = {0};
 pthread_mutex_t mutex;  // 数据锁
 
-static sig_atomic_t exit_requested = 0;
 static sig_atomic_t sensor_state = 1;   // mpu6050 驱动没有低功耗模式或关机的接口，该变量会一直为 1
 
 int sensor_files_open() {
@@ -477,6 +482,15 @@ static int pipe_ready(int fd, const int ready) {
 }
 
 int sensor_service(int pipe) {
+    /* 初始化 SIGINT 信号处理 */
+    struct sigaction sa = {0};
+    sa.sa_handler = sigterm_handler;
+    sigemptyset(&sa.sa_mask);
+    if (sigaction(SIGTERM, &sa, NULL) < 0) {
+        perror("[Sensor Service] sigaction\r\n");
+        return -1;
+    }
+
     /* 打开 IIO 设备所有文件 */
     if (sensor_files_open() < 0) {
         fprintf(stderr, "[Sensor Service] Error: sensor_files_open\r\n");

@@ -345,8 +345,10 @@ static int http_jpeg_frame(int fd, unsigned char *data, size_t size) {
     memcpy(frame + n, data, size);
     
     int frame_len = n + size;
-    if (send_all(fd, frame, frame_len) < 0)
+    if (send_all(fd, frame, frame_len) < 0) {
+        free(frame);
         return -1;
+    }
 
     free(frame);
     return 0;
@@ -453,6 +455,11 @@ static void *compress_routine(void *arg) {
 
             pthread_mutex_lock(&stream_manager->frame_mutex);
 
+            if (stream_manager->buf_jpeg) {
+                free(stream_manager->buf_jpeg);
+                stream_manager->buf_jpeg = NULL;
+                stream_manager->len_jpeg = 0;
+            }
             image_to_jpeg(&stream_manager->buf_jpeg, 
                           &stream_manager->len_jpeg,
                           buf_888,
@@ -556,7 +563,7 @@ int web_service(int pipe) {
     sigemptyset(&sa.sa_mask);
     if (sigaction(SIGTERM, &sa, NULL) < 0) {
         perror("[Web Service] sigaction\r\n");
-        goto error;
+        return -1;
     }
 
     /* web 服务端初始化 */
@@ -572,6 +579,14 @@ int web_service(int pipe) {
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(INADDR_ANY);   // 监听开发板所有网卡
     addr.sin_port = htons(WEB_PORT);
+    /* 执行 TCP socket 释放操作后，需要等待TIME_WAIT的时间才能真正释放。
+     * 为了保证程序退出后，能立刻重新启动，选择开启地址复用 */
+    int opt = 1;
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR,
+                &opt, sizeof(opt)) < 0) {
+        perror("[Web Service] setsockopt");
+        goto error;
+    }
     if (bind(server_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         perror("[Web Service] bind");
         goto error;
@@ -610,6 +625,11 @@ int web_service(int pipe) {
     while (!exit_requested) {
         client_fd = accept(server_fd, NULL, NULL);
         if (client_fd < 0) {
+            if (errno == EINTR) {
+                if (exit_requested)
+                    break;
+            }
+
             perror("[Web Service] accept");
             continue;    
         }
@@ -617,6 +637,15 @@ int web_service(int pipe) {
         // 短连接由主线程自己关闭，长连接由对应线程关闭
         if (http_request_process(client_fd) == HTTP_CLOSE)
             close(client_fd);
+    }
+
+    if (stream_manager) {
+        stream_manager_destroy(stream_manager);
+    }
+
+    if (displaying) {
+        displaying = 0;
+        pthread_join(display_thread, NULL);
     }
 
     display_close(&disp);
