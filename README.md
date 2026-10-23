@@ -29,10 +29,10 @@ Web Service 基于 Linux TCP Socket 实现轻量级 HTTP 服务器，负责接�
 
 | 请求方式 | 接口 | 功能 |
 | :--- | :--- | :--- |
-| GET | /api/status | 查询摄像头运行状态、分辨率、像素格式及帧率 |
-| POST | /api/start | 启动摄像头采集 |
-| POST | /api/stop | 停止摄像头采集 |
-| GET | /api/stream | 建立 MJPEG 视频流连接 |
+| GET | /api/camera/status | 查询摄像头运行状态、分辨率、像素格式及帧率 |
+| POST | /api/camera/start | 启动摄像头采集 |
+| POST | /api/camera/stop | 停止摄像头采集 |
+| GET | /api/camera/stream | 建立 MJPEG 视频流连接 |
 
 普通控制请求采用 JSON 格式返回处理结果；视频流请求则保持 HTTP 连接，通过持续发送图像帧实现实时预览。
 
@@ -87,3 +87,75 @@ web 页面使用了svg文件，httpd默认不会知道此类文件的`Content-Ty
 ```text
 .svg:image/svg+xml
 ```
+
+## 3. 传感器服务及客户端
+传感器服务（sensor service）会以固定的周期进行读取传感器（mpu6050）的数据进行采样，并进行姿态解算。原始数据与解算数据根据`sensor_protocol`定义的数据结构，通过 Unix Domain Socket 进行通信。
+
+系统采用独立的传感器服务进程，将底层传感器访问与上层业务逻辑分离。Sensor Service 负责持续采样和维护最新数据，Web Service 则作为客户端获取传感器数据，并通过 HTTP 接口提供给浏览器，实现传感器状态监测与姿态可视化。
+
+由于传感器数据量较小，进程间通信直接采用 Unix Domain Socket，无需额外使用共享内存。
+
+#### 3.1. 传感器服务架构
+传感器子系统主要由以下部分组成：
+- MPU6050 驱动：通过 Linux IIO（Industrial I/O）子系统提供加速度计和陀螺仪数据访问接口。
+- Sensor Service：周期性读取传感器数据，完成数据转换、姿态解算和最新采样结果维护。
+- Sensor Client：封装与 Sensor Service 的通信操作，供其他业务模块调用。
+- Web Service：通过 Sensor Client 获取传感器数据，并向浏览器提供 HTTP API。
+- Web UI：周期性请求传感器数据，显示加速度、角速度及姿态角，并更新姿态可视化界面。
+
+整体数据流如下：
+```
+                  MPU6050
+                     │
+                     │ IIO 接口
+                     ▼
+               Sensor Service
+              ┌──────────────┐
+              │ 传感器数据采集  │
+              │ 原始数据转换   │
+              │ 姿态解算       │
+              │ 最新数据维护   │
+              └──────────────┘
+                     │
+                     │ Unix Domain Socket
+                     ▼
+                Sensor Client
+                     │
+                     ▼
+                 Web Service
+                     │
+                     │ HTTP / JSON
+                     ▼
+                   Web UI
+                     │
+                     ▼
+             数据显示与姿态可视化
+```
+通过独立服务进程统一访问传感器，其他业务模块无需直接操作底层设备文件，从而降低模块之间的耦合。
+
+#### 3.2. 传感器数据采集与转换
+系统使用 MPU6050 六轴惯性传感器，能够提供三个方向的加速度和角速度数据。Sensor Service 通过 Linux IIO 接口访问传感器，读取对应通道的原始数据、比例系数及校准偏移量。
+主要包括：
+- 三轴加速度：accel_x、accel_y、accel_z。
+- 三轴角速度：gyro_x、gyro_y、gyro_z。
+- 传感器通道对应的 raw、scale 和 calibbias 参数。
+其中 raw 表示原始采样值，scale 表示对应物理量的比例系数，calibbias 表示校准偏移。
+真实值使用如下公式进行计算：
+```
+value = (raw - bias) * scale;
+```
+
+#### 3.3. 姿态解算
+姿态使用三个欧拉角表示：
+- Roll（横滚角）：描述设备绕 X 轴的倾斜姿态。
+- Pitch（俯仰角）：描述设备的俯仰姿态。
+- Yaw（航向角）：描述设备的水平朝向变化。
+
+#### 3.4. Web 数据展示
+Web Service 通过 Sensor Client 获取传感器数据，并提供以下 HTTP 接口：
+
+| 请求方式 | 接口 | 功能 |
+| :--- | :--- | :--- |
+| GET | /api/sensor/data | 获取传感器数据 |
+
+为使页面中的姿态模型旋转更加平滑，前端对接收到的 Roll、Pitch 和 Yaw 进行角度插值处理。其中，Roll 和 Yaw 使用最短路径角度插值，避免跨越 ±180° 边界时发生不必要的大角度旋转。
