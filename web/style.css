@@ -39,10 +39,10 @@ table:last-child {
 }
 
 .control-buttons {
-    display: flex;
+    display: grid;
     justify-content: center;
     align-items: center;
-    gap: 30px;
+    grid-gap: 30px;
 }
 
 button {
@@ -57,6 +57,8 @@ button {
 }
 
 #start-button {
+    grid-row: 1;
+    grid-column: 1;
     background-color: rgb(11, 238, 162);
 }
 
@@ -70,6 +72,8 @@ button {
 }
 
 #stop-button {
+    grid-row: 1;
+    grid-column: 2;
     background-color: rgb(240, 105, 105);
 }
 
@@ -82,17 +86,34 @@ button {
     background-color: rgb(212, 26, 41);
 }
 
-#stream-button {
+#streamon-button {
+    grid-row: 2;
+    grid-column: 1;
     background-color: rgb(103, 214, 248);
 }
 
-#stream-button:hover {
+#streamon-button:hover {
     translate: 0 -2px;
     box-shadow: 2px 1px 2px black;
 }
 
-#stream-button:active {
+#streamon-button:active {
     background-color: rgb(103, 129, 245);
+}
+
+#streamoff-button {
+    grid-row: 2;
+    grid-column: 2;
+    background-color: rgb(211, 102, 29);
+}
+
+#streamoff-button:hover {
+    translate: 0 -2px;
+    box-shadow: 2px 1px 2px black;
+}
+
+#streamoff-button:active {
+    background-color: rgb(245, 183, 103);
 }
 
 .display {
@@ -141,4 +162,30 @@ img {
 #sensor-display object {
     width: 260px;
     height: 260px;
+}
+
+#system-info {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 190px;
+    padding: 15px;
+    background: rgba(30, 35, 45, 0.92);
+    color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    z-index: 1000;
+}
+
+.system-item {
+    display: flex;
+    justify-content: space-between;
+    margin: 8px 0;
+}
+
+.system-item span:last-child {
+    color: #4ade80;
+    font-weight: bold;
 }

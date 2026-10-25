@@ -5,9 +5,10 @@ set(CMAKE_BUILD_TYPE Debug)
 # 主程序
 file(GLOB SOURCES "${PROJECT_SOURCE_DIR}/src/*.c")
 file(GLOB SERVICES "${PROJECT_SOURCE_DIR}/services/*.c")
+file(GLOB MODULES "${PROJECT_SOURCE_DIR}/modules/*.c")
 
 set(APP smart_gateway)
-add_executable(${APP} ${SOURCES} ${SERVICES})
+add_executable(${APP} ${SOURCES} ${SERVICES} ${MODULES})
 
 target_include_directories(${APP} PRIVATE
     /usr/local/include

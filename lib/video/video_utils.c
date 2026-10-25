@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
+#include <string.h>
 
 static struct stream_client *list_tail(struct stream_client *head) {
     struct stream_client *res = head;
@@ -57,16 +58,21 @@ struct stream_client *stream_client_create(int fd, void *(*routine)(void *)) {
     client->running = 0;
     client->routine = routine;
     client->next = NULL;
-    client->parent = NULL;
+    client->parent = NULL; 
+    memset(client->id, 0, sizeof(client->id));
 
     return client;
 }
 
+// 销毁流客户，如果客户有所属的流管理器，从管理链表中移除
 int stream_client_destroy(struct stream_client *client) {
     int ret = 0;
-    // 从列表中移除
+    // 从列链表中移除
     if (client->parent) {
         ret = list_del(client->parent->head, client);
+        pthread_mutex_lock(&client->parent->mutex);
+        --client->parent->client_count;
+        pthread_mutex_unlock(&client->parent->mutex);
     }
 
     // 删除线程
@@ -85,7 +91,7 @@ int stream_client_destroy(struct stream_client *client) {
     return ret;
 }
 
-// 向流管理器中添加流客户，并启动客户线程
+// 向流管理器的链表中添加流客户，并启动客户线程
 int stream_client_add(struct stream_manager *manager, struct stream_client *client) {
     pthread_mutex_lock(&manager->mutex);
 
@@ -119,27 +125,61 @@ int stream_client_add(struct stream_manager *manager, struct stream_client *clie
     return 0;
 }
 
-// 删除流管理器中的流客户，并销毁
-void stream_client_del(struct stream_manager *manager, struct stream_client *client) {
-    if (manager->client_count == 0 || client == NULL)
-        return;
+// 删除流管理器中的流客户，取消客户线程，但不销毁客户变量
+int stream_client_del(struct stream_manager *manager, struct stream_client *client) {
+    if (manager->client_count == 0 ||
+        client == NULL ||
+        client->parent != manager)
+        return -1;
 
-    // 将 client 销毁
     pthread_mutex_lock(&manager->mutex);
-
-    if (stream_client_destroy(client) == 0)
+        
+    // 从链表中删除
+    if (list_del(manager->head, client) == 0)
         manager->client_count--;
-
+    else
+        return -1;
+    
     pthread_mutex_unlock(&manager->mutex);
+
+    // 删除线程
+    if (client->running) {
+        pthread_cancel(client->thread);
+        client->running = 0;
+    }
+    pthread_join(client->thread, NULL);
+
+    return 0;
 }
 
-// 删除所有 client 线程
-void stream_client_del_all(struct stream_manager *manager) {
-    struct stream_client *client = list_tail(manager->head);
-    while (client && client != manager->head) {
-        stream_client_del(manager, client);
-        client = list_tail(manager->head);
+struct stream_client *stream_find_client_by_fd(struct stream_manager *manager, int fd) {
+    if (!manager || !manager->head->next)
+        return NULL;
+
+    struct stream_client *client = manager->head->next;
+
+    while(client) {
+        if (client->fd == fd)
+            break;
+        client = client->next;
     }
+    
+    return client;
+}
+
+struct stream_client *stream_find_client_by_id(struct stream_manager *manager, char id[37]) {
+    if (!manager || !manager->head->next)
+        return NULL;
+
+    struct stream_client *client = manager->head->next;
+
+    while(client) {
+        if (strcmp(client->id, id))
+            break;
+        client = client->next;
+    }
+    
+    return client;
 }
 
 struct stream_manager *stream_manager_create(void *(*routine)(void *)) {
@@ -176,7 +216,13 @@ void stream_manager_destroy(struct stream_manager *manager) {
     if (manager == NULL)
         return;
 
-    stream_client_del_all(manager);
+    // 清理链表中的客户
+    struct stream_client *client = list_tail(manager->head);
+    while (client && client != manager->head) {
+        stream_client_del(manager, client);
+        stream_client_destroy(client);
+        client = list_tail(manager->head);
+    }
 
     pthread_cancel(manager->thread);
     pthread_join(manager->thread, NULL);

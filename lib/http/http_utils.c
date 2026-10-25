@@ -32,13 +32,7 @@ size_t http_get_request_target(const char *request, char **target, size_t *size)
     if (e == NULL)
         return 0;
 
-    char *te = memchr(s, '?', e - s);
-
-    size_t target_size;
-    if (te == NULL)
-        target_size = e - s + 1;
-    else
-        target_size = te - s + 1;
+    size_t target_size = e - s + 1;
 
     if (target_size > *size) {
         char *temp = realloc(*target, target_size);
@@ -52,6 +46,38 @@ size_t http_get_request_target(const char *request, char **target, size_t *size)
     (*target)[target_size - 1] = '\0';
 
     return target_size;
+}
+
+int http_path_match(const char *target, const char *path) {
+    size_t len = strlen(path);
+
+    return strncmp(target, path, len) == 0 &&
+           (target[len] == '\0' || target[len] == '?');
+}
+
+int http_get_request_body(const char *request, char **body, size_t *size) {
+    if (request == NULL || body == NULL || size == NULL)
+        return -1;
+
+    char *s = strstr(request, "\r\n\r\n");
+    if (s == NULL)
+        return -1;
+    s += 2;
+
+    size_t target_size = strlen(s) + 1;
+
+    if (target_size > *size) {
+        char *temp = realloc(*body, target_size);
+        if (temp == NULL)
+            return -1;
+        *body = temp;
+        *size = target_size;
+    }
+    
+    memcpy(*body, s, target_size - 1);
+    (*body)[target_size - 1] = '\0';
+    
+    return 0;
 }
 
 ssize_t http_send_response(int fd,

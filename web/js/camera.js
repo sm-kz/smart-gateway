@@ -4,6 +4,7 @@ let camera_format = document.getElementById("camera-format");
 let camera_fps = document.getElementById("camera-fps");
 let img = document.querySelector("img");
 let stream_active = false;
+let stream_id = null;
 
 function camera_state_check() {
     send_api(api_get_camera_status)
@@ -54,16 +55,44 @@ function camera_stop_button_clicked() {
     });
 }
 
-function camera_stream_button_clicked() {
+function camera_streamon_button_clicked() {
     if (stream_active)
         return;
 
     stream_active = true;
-    // 保证每次点击时，img.src 都不同，请求正常发送
-    // img.src = server_ip + api_get_camera_stream + "?t=" + Date.now();
 
-    // 针对当前只有开启，没有关闭的情况，不需要发送多个请求
-    // 而且 img.src 只能接收一个连接的帧数据
-    // 如果在不关闭前一个连接的情况下显示另一个连接的帧，那么前一个连接会因为数据不被接收而一直阻塞，导致卡死
-    img.src = server_ip + api_get_camera_stream + "?=" + Date.now();
+    stream_id = Date.now().toString() + "-" +
+                Math.random().toString(36).slice(2);
+
+    img.src = server_ip + api_get_camera_streamon + "?id=" + encodeURIComponent(stream_id);
+}
+
+async function camera_streamoff_button_clicked() {
+    if (!stream_active)
+        return;
+
+    stream_active = false;
+    
+    const id = stream_id;
+    stream_id = null;
+
+    // 关闭 MJPEG 连接
+    img.src = "";
+
+    // 发送关闭流客户端的报文
+    try {
+        await fetch(server_ip + api_post_camera_streamoff, {
+            method: "POST",
+            headers: {
+                "Content-Type": "text/plain"
+            },
+            body: id
+        });
+
+        if (!response.ok)
+            console.error("streamoff failed:", response.status);
+
+    } catch (error) {
+        console.error("streamoff error:", error);
+    }
 }

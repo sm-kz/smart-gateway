@@ -6,6 +6,7 @@
 #include "http_utils.h"
 #include "video_utils.h"
 #include "sensor_client.h"
+#include "system_monitor.h"
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -97,7 +98,8 @@ void camera_response_to_json(struct camera_response *response, char *buf, size_t
         break;
     }
 
-    snprintf(buf, maxlen,
+    int n = snprintf(
+        buf, maxlen,
         "{\r\n"
         "   \"magic\": \"%#x\",\r\n"
         "   \"version\": %u,\r\n"
@@ -119,7 +121,10 @@ void camera_response_to_json(struct camera_response *response, char *buf, size_t
         state_str
     );
 
-    buf[maxlen - 1] = '\0';
+    if (n >= maxlen)
+        buf[maxlen - 1] = '\0';
+    else
+        buf[n] = '\0';
 }
 
 void sensor_response_to_json(struct sensor_response *response, char *buf, size_t maxlen) {
@@ -147,7 +152,8 @@ void sensor_response_to_json(struct sensor_response *response, char *buf, size_t
         break;
     }
 
-    snprintf(buf, maxlen,
+    int n = snprintf(
+        buf, maxlen,
         "{\r\n"
         "   \"magic\": \"%#x\",\r\n"
         "   \"version\": %u,\r\n"
@@ -180,7 +186,10 @@ void sensor_response_to_json(struct sensor_response *response, char *buf, size_t
         response->data.yaw
     );
 
-    buf[maxlen - 1] = '\0';
+    if (n >= maxlen)
+        buf[maxlen - 1] = '\0';
+    else
+        buf[n] = '\0';
 }
 
 static enum http_result http_request_process(int client_fd) {
@@ -207,11 +216,7 @@ static enum http_result http_request_process(int client_fd) {
 
     switch(method) {
     case REQUEST_GET:
-        if (!strcmp(target, "/")) {
-            status_code = 200;
-            strcpy(status_text, "OK");
-            strcpy(body, "Hello smart gateway");
-        } else if (!strcmp(target, "/api/camera/status")) {
+        if (http_path_match(target, "/api/camera/status")) {
             /* 获取摄像头状态 */
             struct camera_response resp;
             if (camera_client_command(&web_cclient, CAMERA_CMD_STATUS, &resp) == 0) {
@@ -222,28 +227,44 @@ static enum http_result http_request_process(int client_fd) {
                 status_code = 410;
                 strcpy(status_text, "Gone");
             }
-        } else if (!strcmp(target, "/api/camera/stream")) {
+        } else if (http_path_match(target, "/api/camera/streamon")) {
             if (stream_manager == NULL) {
-                fprintf(stderr, "[Web Service] Warning: /api/camera/start must be sent before /api/camera/stream\r\n");
+                fprintf(stderr, "[Web Service] Warning: /api/camera/start must be sent before /api/camera/streamon\r\n");
+                return HTTP_CLOSE;
+            }
+
+            char *id_str = strstr(target, "?id=");
+            if (!id_str) {
+                fprintf(stderr, "[Web Service] Error: no id appended at target on request of /api/camera/streamon\r\n");
+                return HTTP_CLOSE;
+            }
+            id_str += 4;
+
+            size_t id_len = strcspn(id_str, "&");
+
+            if (!id_len) {
+                fprintf(stderr, "[Web Service] Error: invalid stream id\r\n");
                 return HTTP_CLOSE;
             }
 
             // 加入 stream_manager 后由其释放
             struct stream_client *sclient = stream_client_create(client_fd, upload_routine);
             if (!sclient) {
-                fprintf(stderr, "[Web Service] Error: stream_client_create");
+                fprintf(stderr, "[Web Service] Error: stream_client_create\r\n");
                 return HTTP_CLOSE;
             }
 
+            strncpy(sclient->id, id_str, id_len);
+
             if (stream_client_add(stream_manager, sclient) < 0) {
-                fprintf(stderr, "[Web Service] Error: stream_client_add");
+                fprintf(stderr, "[Web Service] Error: stream_client_add\r\n");
                 free(sclient);
                 return HTTP_CLOSE;
             }
 
             // 开启/关闭 视频流的请求属于长连接
             return HTTP_TRANSFER;
-        } else if (!strcmp(target, "/api/sensor/data")) {
+        } else if (http_path_match(target, "/api/sensor/data")) {
             struct sensor_response resp;
             if (sensor_client_command(&web_sclient, SENSOR_CMD_DATA, &resp) == 0) {
                 status_code = 200;
@@ -253,14 +274,35 @@ static enum http_result http_request_process(int client_fd) {
                 status_code = 410;
                 strcpy(status_text, "Gone");
             }
+        } else if (http_path_match(target, "/api/system/state")) {
+            status_code = 200;
+            strcpy(status_text, "OK");
+
+            int n = snprintf(
+                body, sizeof(body),
+                "{\r\n"
+                "   \"cpu_usage\": %d,\r\n"
+                "   \"mem_usage\": %d,\r\n"
+                "   \"uptime\": %lf\r\n"
+                "}",
+                cpu_usage(),
+                memory_usage(),
+                system_uptime()
+            );
+
+            if (n >= sizeof(body))
+                body[sizeof(body) - 1] = '\0';
+            else
+                body[n] = '\0';
         } else {
-            status_code = 404;
-            strcpy(status_text, "Not Found");
+            status_code = 200;
+            strcpy(status_text, "OK");
+            strcpy(body, "Hello smart gateway");
         }
         break;
 
     case REQUEST_POST:
-        if (!strcmp(target, "/api/camera/start")) {
+        if (http_path_match(target, "/api/camera/start")) {
             if (camera_client_command(&web_cclient, CAMERA_CMD_START, NULL) == 0) {
                 status_code = 200;
                 strcpy(status_text, "OK");
@@ -283,7 +325,7 @@ static enum http_result http_request_process(int client_fd) {
                 status_code = 410;
                 strcpy(status_text, "Gone");
             }
-        } else if (!strcmp(target, "/api/camera/stop")) {
+        } else if (http_path_match(target, "/api/camera/stop")) {
             if (camera_client_command(&web_cclient, CAMERA_CMD_STOP, NULL) == 0) {
                 status_code = 200;
                 strcpy(status_text, "OK");
@@ -305,12 +347,35 @@ static enum http_result http_request_process(int client_fd) {
                 status_code = 410;
                 strcpy(status_text, "Gone");
             }
+        } else if (http_path_match(target, "/api/camera/streamoff")) {
+            // 从请求体中获取需要关闭的流 socket
+            char *id = NULL;
+            size_t id_size = 0;
+            if (http_get_request_body(request, &id, &id_size) < 0) {
+                fprintf(stderr, "[Web Service] Error: http_get_request_body\r\n");
+                status_code = 400;
+                strcpy(status_text, "Bad Request");
+                goto send;
+            }
+
+            status_code = 200;
+            strcpy(status_text, "OK");
+            
+            struct stream_client *sclient = stream_find_client_by_id(stream_manager, id);
+            if (!sclient)
+                goto send;
+
+            stream_client_destroy(sclient);
+        } else {
+            status_code = 404;
+            strcpy(status_text, "Not Found");
         }
         break;
     default:
         break;
     }
 
+send:
     http_send_response(client_fd, status_code, status_text, "application/json", body);
 
     return HTTP_CLOSE;
@@ -532,7 +597,7 @@ static void *upload_routine(void *arg) {
 
         // 发送 jpeg 帧数据
         if (http_jpeg_frame(sclient->fd, frame_buf, frame_size) < 0) {
-            fprintf(stderr, "client %d disconnected or send timeout\n",
+            fprintf(stderr, "client %d disconnected or send timeout\r\n",
                     sclient->fd);
             break;
         }
@@ -557,12 +622,27 @@ static int pipe_ready(int fd, const int ready) {
 }
 
 int web_service(int pipe) {
+    /* 针对流客户关闭：
+     * 流客户关闭 socket 时，如果还有连接，会发送 FIN 报文给服务端
+     * FIN、RST 这些 TCP 协议层的报文 accept 不会接收到，而是由内核直接处理
+     * 接收到 FIN 之后，如果再 send 会超时，发送 SIGPIPE 信号
+     * SIGPIPE 的默认行为会让该进程终止。体现就是整个程序卡死了
+     */
+    struct sigaction sa_pipe = {0};
+    sa_pipe.sa_handler = SIG_IGN;
+    sigemptyset(&sa_pipe.sa_mask);
+
+    if (sigaction(SIGPIPE, &sa_pipe, NULL) < 0) {
+        perror("[Web Service] sigaction SIGPIPE");
+        return -1;
+    }
+
     /* 初始化 SIGINT 信号处理 */
-    struct sigaction sa = {0};
-    sa.sa_handler = sigterm_handler;
-    sigemptyset(&sa.sa_mask);
-    if (sigaction(SIGTERM, &sa, NULL) < 0) {
-        perror("[Web Service] sigaction\r\n");
+    struct sigaction sa_int = {0};
+    sa_int.sa_handler = sigterm_handler;
+    sigemptyset(&sa_int.sa_mask);
+    if (sigaction(SIGTERM, &sa_int, NULL) < 0) {
+        perror("[Web Service] sigaction SIGTERM\r\n");
         return -1;
     }
 
@@ -608,16 +688,22 @@ int web_service(int pipe) {
     /* 连接本地传感器服务 */
     sensor_client_init(&web_sclient);
 
+    /* 开启系统监测 */
+    if (system_monitor_init() < 0) {
+        fprintf(stderr, "[Web Service] Error: system_monitor_init\r\n");
+        goto error1;
+    }
+
     /* 管理 fb 设备 */
     display_init(&disp, 0);
     if (display_open(&disp) < 0) {
         fprintf(stderr, "[Web Service] Error: display_open\r\n");
-        goto error1;
+        goto error2;
     }
 
     /* 初始化就绪，将就绪状态写入管道 */
     if (pipe_ready(pipe, 1) < 0) {
-        goto error2;
+        goto error3;
     }
 
     int client_fd = -1;
@@ -649,13 +735,16 @@ int web_service(int pipe) {
     }
 
     display_close(&disp);
+    system_monitor_close();
     camera_client_close(&web_cclient);
     close(server_fd);
 
     return 0;
 
-error2:
+error3:
     display_close(&disp);
+error2:
+    system_monitor_close();
 error1:
     camera_client_close(&web_cclient);
 error:

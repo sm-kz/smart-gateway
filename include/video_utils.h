@@ -8,6 +8,7 @@
 
 struct stream_client {
     int fd;                 // 客户端 socket
+    char id[37];            // UUID 字符串
     pthread_t thread;       // 推流线程
     volatile int running;   // 线程运行标志
     void *(*routine)(void *);   // 线程运行函数
@@ -37,8 +38,9 @@ void stream_manager_destroy(struct stream_manager *manager);
 struct stream_client *stream_client_create(int fd, void *(*routine)(void *));
 int stream_client_destroy(struct stream_client *client);
 int stream_client_add(struct stream_manager *manager, struct stream_client *client);
-void stream_client_del(struct stream_manager *manager, struct stream_client *client);
-void stream_client_del_all(struct stream_manager *manager);
+struct stream_client *stream_find_client_by_fd(struct stream_manager *manager, int fd);
+struct stream_client *stream_find_client_by_id(struct stream_manager *manager, char id[37]);
+int stream_client_del(struct stream_manager *manager, struct stream_client *client);
 
 void image_rgb565_to_rgb888(unsigned char **dst,
                             size_t *outsize,

@@ -45,7 +45,8 @@
                 <div class="control-buttons">
                     <button id="start-button">Start</button>
                     <button id="stop-button">Stop</button>
-                    <button id="stream-button">Stream</button>
+                    <button id="streamon-button">Stream On</button>
+                    <button id="streamoff-button">Stream Off</button>
                 </div>
             </div>
 
@@ -115,11 +116,29 @@
                 </object>
             </div>
         </div>
+
+        <div id="system-info">
+            <div class="system-item">
+                <span>CPU</span>
+                <span id="sys-cpu">--%</span>
+            </div>
+
+            <div class="system-item">
+                <span>Memory</span>
+                <span id="sys-memory">--%</span>
+            </div>
+
+            <div class="system-item">
+                <span>Uptime</span>
+                <span id="sys-uptime">--</span>
+            </div>
+        </div>
     </body>
 
     <script src="js/utils.js" defer></script>
     <script src="js/api.js" defer></script>
     <script src="js/camera.js" defer></script>
     <script src="js/sensor.js" defer></script>
+    <script src="js/system.js" defer></script>
     <script src="js/app.js" defer></script>
 </html>
