@@ -1,11 +1,12 @@
 #include "sensor_protocol.h"
 #include "ipc_utils.h"
+#include "service_manager.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <linux/un.h>
+#include <sys/un.h>
 #include <string.h>
 #include <signal.h>
 #include <errno.h>
@@ -17,6 +18,12 @@
 #include <pthread.h>
 #include <time.h>
 #include <signal.h>
+
+/* 保存传感器服务程序状态的 UDS 地址 */
+const struct sockaddr_un sensor_state_addr = {
+    .sun_family = AF_UNIX,
+    .sun_path = "/tmp/senst.sock"
+};
 
 static volatile sig_atomic_t exit_requested = 0;
 static void sigterm_handler(int sig) {
@@ -467,21 +474,12 @@ void *sample_routine(void *arg) {
     return NULL;
 }
 
-static int pipe_ready(int fd, const int ready) {
-    if (fd >= 0) {
-        char res = ready;
-        if (write(fd, &res, 1) != 1) {
-            perror("[Sensor Service] ready notify");
-            return -1;
-        }
-        close(fd);
-        fd = -1;
-    }
-
-    return 0;
+static inline void send_state(int fd, const enum service_state state) {
+    if (fd > 0)
+        send_all(fd, &state, sizeof(int));
 }
 
-int sensor_service(int pipe) {
+int sensor_service(void *arg) {
     /* 初始化 SIGINT 信号处理 */
     struct sigaction sa = {0};
     sa.sa_handler = sigterm_handler;
@@ -491,11 +489,25 @@ int sensor_service(int pipe) {
         return -1;
     }
 
-    /* 打开 IIO 设备所有文件 */
-    if (sensor_files_open() < 0) {
-        fprintf(stderr, "[Sensor Service] Error: sensor_files_open\r\n");
-        return -1;
+    /* 状态 socket */
+    int state_fd = -1;
+
+    if (access(sensor_state_addr.sun_path, F_OK) == 0) {
+        state_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+        if (state_fd < 0) {
+            perror("[Sensor Service] socket");
+            return -1;
+        }
+    
+        if (connect(state_fd, (struct sockaddr *)&sensor_state_addr, sizeof(struct sockaddr_un)) < 0) {
+            perror("[Sensor Service] connect");
+            close(state_fd);
+            return -1;
+        }
     }
+
+    // 写入 STARTED 状态
+    send_state(state_fd, SERVICE_STARTED);
 
     /* 建立 socket */
     int server_fd;
@@ -523,6 +535,12 @@ int sensor_service(int pipe) {
         goto error2;
     }
 
+    /* 打开 IIO 设备所有文件 */
+    if (sensor_files_open() < 0) {
+        fprintf(stderr, "[Sensor Service] Error: sensor_files_open\r\n");
+        goto error2;
+    }
+
     /* 初始化数据锁 */
     pthread_mutex_init(&mutex, NULL);
 
@@ -530,13 +548,11 @@ int sensor_service(int pipe) {
     pthread_t sample_pid;
     if (pthread_create(&sample_pid, NULL, sample_routine, NULL)) {
         fprintf(stderr, "[Sensor Service] Error: pthread_create");
-        goto error2;
-    }
-
-    /* 初始化状态填入管道 */
-    if (pipe_ready(pipe, 1) < 0) {
         goto error3;
     }
+
+    // 服务进入正式运行状态
+    send_state(state_fd, SERVICE_RUNNING);
 
     int client_fd;
 
@@ -562,7 +578,6 @@ int sensor_service(int pipe) {
         resp.result = ret;
 
         /* 无设备状态控制接口 */
-
         resp.state = sensor_state;
 
         /* 根据指令执行响应的操作 */
@@ -590,21 +605,27 @@ int sensor_service(int pipe) {
     pthread_cancel(sample_pid);
     pthread_join(sample_pid, NULL);
     pthread_mutex_destroy(&mutex);
+    sensor_files_close();
+
+    // 服务程序进入停止（结束）态
+    send_state(state_fd, SERVICE_STOPPED);
+
     unlink(SENSOR_SOCK_PATH);
     close(server_fd);
-    sensor_files_close();
+    if (state_fd > 0)
+        close(state_fd);
+
     return 0;
 
 error3:
-    pthread_cancel(sample_pid);
-    pthread_join(sample_pid, NULL);
     pthread_mutex_destroy(&mutex);
+    sensor_files_close();
 error2:
     unlink(SENSOR_SOCK_PATH);
 error1:
     close(server_fd);
 error:
-    sensor_files_close();
-    pipe_ready(pipe, 0);
+    if (state_fd > 0)
+        close(state_fd);
     return -1;
 }

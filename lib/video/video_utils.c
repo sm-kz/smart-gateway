@@ -6,49 +6,6 @@
 #include <unistd.h>
 #include <string.h>
 
-static struct stream_client *list_tail(struct stream_client *head) {
-    struct stream_client *res = head;
-
-    while (res->next) {
-        res = res->next;
-    }
-
-    return res;
-}
-
-static struct stream_client *list_prev(struct stream_client *head, struct stream_client *item) {
-    if (item == NULL)
-        return NULL;
-
-    struct stream_client *current = head;
-
-    while (current->next) {
-        if (current->next == item)
-            return current;
-
-        current = current->next;
-    }
-
-    return NULL;
-}
-
-static void list_add(struct stream_client *head, struct stream_client *item) {
-    struct stream_client *tail = list_tail(head);
-    item->next = NULL;
-    tail->next = item;
-}
-
-static int list_del(struct stream_client *head, struct stream_client *item) {
-    struct stream_client *prev = list_prev(head, item);
-
-    if (prev == NULL)
-        return -1;
-
-    prev->next = item->next;
-    item->next = NULL;
-    return 0;
-}
-
 struct stream_client *stream_client_create(int fd, void *(*routine)(void *)) {
     struct stream_client *client = malloc(sizeof(struct stream_client));
     if (!client)
@@ -57,7 +14,7 @@ struct stream_client *stream_client_create(int fd, void *(*routine)(void *)) {
     client->fd = fd;
     client->running = 0;
     client->routine = routine;
-    client->next = NULL;
+    INIT_LIST_HEAD(&client->head);
     client->parent = NULL; 
     memset(client->id, 0, sizeof(client->id));
 
@@ -66,21 +23,8 @@ struct stream_client *stream_client_create(int fd, void *(*routine)(void *)) {
 
 // 销毁流客户，如果客户有所属的流管理器，从管理链表中移除
 int stream_client_destroy(struct stream_client *client) {
-    int ret = 0;
-    // 从列链表中移除
-    if (client->parent) {
-        ret = list_del(client->parent->head, client);
-        pthread_mutex_lock(&client->parent->mutex);
-        --client->parent->client_count;
-        pthread_mutex_unlock(&client->parent->mutex);
-    }
-
-    // 删除线程
-    if (client->running) {
-        pthread_cancel(client->thread);
-        client->running = 0;
-    }
-    pthread_join(client->thread, NULL);
+    if (client->parent)
+        stream_client_del(client->parent, client);
 
     // 关闭 socket
     if (client->fd > 0)
@@ -88,36 +32,33 @@ int stream_client_destroy(struct stream_client *client) {
 
     free(client);
 
-    return ret;
+    return 0;
 }
 
 // 向流管理器的链表中添加流客户，并启动客户线程
 int stream_client_add(struct stream_manager *manager, struct stream_client *client) {
-    pthread_mutex_lock(&manager->mutex);
-
     if (manager->client_count == MAX_CLIENTS || 
         client == NULL || 
         client->fd <= 0) {
-            pthread_mutex_unlock(&manager->mutex);
             return -1;
         }
 
+    pthread_mutex_lock(&manager->mutex);
+
     // 加入链表
-    list_add(manager->head, client);
-    manager->client_count++;
+    list_add(&client->head, &manager->head);
     client->parent = manager;
+    manager->client_count++;
 
     // 创建线程
     client->running = 1;
     if (pthread_create(&client->thread, NULL, client->routine, client) != 0) {
-        if (list_del(manager->head, client) == 0) {
-            manager->client_count--;
-            client->running = 0;
+        list_del_init(&client->head);
+        client->running = 0;
 
-            pthread_mutex_unlock(&manager->mutex);
+        pthread_mutex_unlock(&manager->mutex);
 
-            return -1;
-        }
+        return -1;
     }
 
     pthread_mutex_unlock(&manager->mutex);
@@ -131,55 +72,50 @@ int stream_client_del(struct stream_manager *manager, struct stream_client *clie
         client == NULL ||
         client->parent != manager)
         return -1;
-
-    pthread_mutex_lock(&manager->mutex);
         
-    // 从链表中删除
-    if (list_del(manager->head, client) == 0)
-        manager->client_count--;
-    else
-        return -1;
-    
-    pthread_mutex_unlock(&manager->mutex);
-
     // 删除线程
     if (client->running) {
-        pthread_cancel(client->thread);
         client->running = 0;
+        pthread_cancel(client->thread);
+        pthread_join(client->thread, NULL);
     }
-    pthread_join(client->thread, NULL);
+
+    // 从链表中删除
+    pthread_mutex_lock(&manager->mutex);
+
+    list_del_init(&client->head);
+    client->parent = NULL;
+    --manager->client_count;
+
+    pthread_mutex_unlock(&manager->mutex);
 
     return 0;
 }
 
 struct stream_client *stream_find_client_by_fd(struct stream_manager *manager, int fd) {
-    if (!manager || !manager->head->next)
+    if (!manager || list_empty(&manager->head))
         return NULL;
 
-    struct stream_client *client = manager->head->next;
-
-    while(client) {
+    struct stream_client *client;
+    list_foreach_entry(client, &manager->head, head) {
         if (client->fd == fd)
-            break;
-        client = client->next;
+            return client;
     }
     
-    return client;
+    return NULL;
 }
 
 struct stream_client *stream_find_client_by_id(struct stream_manager *manager, char id[37]) {
-    if (!manager || !manager->head->next)
+    if (!manager || list_empty(&manager->head))
         return NULL;
 
-    struct stream_client *client = manager->head->next;
-
-    while(client) {
+    struct stream_client *client;
+    list_foreach_entry(client, &manager->head, head) {
         if (strcmp(client->id, id))
-            break;
-        client = client->next;
+            return client;
     }
     
-    return client;
+    return NULL;
 }
 
 struct stream_manager *stream_manager_create(void *(*routine)(void *)) {
@@ -190,11 +126,7 @@ struct stream_manager *stream_manager_create(void *(*routine)(void *)) {
     if (!manager)
         return NULL;
 
-    manager->head = malloc(sizeof(struct stream_client));
-    if (!manager->head) {
-        free(manager);
-        return NULL;
-    }
+    INIT_LIST_HEAD(&manager->head);
 
     pthread_cond_init(&manager->frame_cond, NULL);
     pthread_mutex_init(&manager->mutex, NULL);
@@ -204,7 +136,6 @@ struct stream_manager *stream_manager_create(void *(*routine)(void *)) {
         pthread_mutex_destroy(&manager->frame_mutex);
         pthread_mutex_destroy(&manager->mutex);
         pthread_cond_destroy(&manager->frame_cond);
-        free(manager->head);
         free(manager);
         return NULL;
     }
@@ -217,13 +148,12 @@ void stream_manager_destroy(struct stream_manager *manager) {
         return;
 
     // 清理链表中的客户
-    struct stream_client *client = list_tail(manager->head);
-    while (client && client != manager->head) {
-        stream_client_del(manager, client);
+    struct stream_client *client;
+    while(!list_empty(&manager->head)) {
+        client = list_first_entry(&manager->head, struct stream_client, head);
         stream_client_destroy(client);
-        client = list_tail(manager->head);
     }
-
+    
     pthread_cancel(manager->thread);
     pthread_join(manager->thread, NULL);
 
@@ -233,8 +163,7 @@ void stream_manager_destroy(struct stream_manager *manager) {
 
     if (manager->buf_jpeg)
         free(manager->buf_jpeg);
-
-    free(manager->head);
+        
     free(manager);
 }
 

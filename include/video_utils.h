@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <pthread.h>
+#include "list.h"
 
 #define MAX_CLIENTS     5
 
@@ -13,12 +14,12 @@ struct stream_client {
     volatile int running;   // 线程运行标志
     void *(*routine)(void *);   // 线程运行函数
 
-    struct stream_client *next; // 链表节点
+    struct list_head head; // 链表节点
     struct stream_manager *parent;
 };
 
 struct stream_manager {
-    struct stream_client *head;
+    struct list_head head;
     size_t client_count;
 
     pthread_t thread;               // manager 编码线程

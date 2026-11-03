@@ -1,6 +1,7 @@
 #include "camera_protocol.h"
 #include "camera.h"
 #include "ipc_utils.h"
+#include "service_manager.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -14,6 +15,12 @@
 #include <sys/mman.h>
 #include <poll.h>
 #include <signal.h>
+
+/* 保存摄像头服务程序状态的 UDS 地址 */
+const struct sockaddr_un camera_state_addr = {
+    .sun_family = AF_UNIX,
+    .sun_path = "/tmp/camst.sock"
+};
 
 static struct camera camera;
 static volatile sig_atomic_t camera_service_status = CAMERA_SERVICE_READY;
@@ -71,7 +78,7 @@ void *camera_service_routine (void *arg) {
             break;
             
         if (poll(&pfd, 1, 200) <= 0) {
-            if (errno == ETIMEDOUT)
+            if (errno == EINTR)
                 continue;
             else {
                 perror("[Camera Service] poll\r\n");
@@ -115,43 +122,40 @@ exit:
     pthread_exit(NULL);
 }
 
-static int pipe_ready(int fd, const int ready) {
-    if (fd >= 0) {
-        char res = ready;
-        if (write(fd, &res, 1) != 1) {
-            perror("[Sensor Service] ready notify");
-            return -1;
-        }
-        close(fd);
-        fd = -1;
-    }
-
-    return 0;
+static inline void send_state(int fd, const enum service_state state) {
+    if (fd > 0)
+        send_all(fd, &state, sizeof(int));
 }
 
-int camera_service(int pipe) {
-    /* 初始化摄像头 */
-    camera_init(&camera, 1);
-    camera_set_pixelfmt(&camera, CAMERA_PIX_FMT_RGB565);
-    camera_set_res(&camera, 800, 480);
-    camera_set_fps(&camera, 30);
-    if (camera_open(&camera) < 0)
-        return -1;
-    if (camera_sync_fmt(&camera) < 0)
-        goto error;
-    if (camera_sync_fps(&camera) < 0)
-        goto error;
-    if (camera_prepare_buffer(&camera, 3) < 0)
-        goto error;
-
+int camera_service(void *arg) {
     /* 初始化 SIGINT 信号处理 */
     struct sigaction sa = {0};
     sa.sa_handler = sigterm_handler;
     sigemptyset(&sa.sa_mask);
     if (sigaction(SIGTERM, &sa, NULL) < 0) {
         perror("[Camera Service] sigaction\r\n");
-        goto error;
+        return -1;
     }
+
+    /* 状态 socket */
+    int state_fd = -1;
+
+    if (access(camera_state_addr.sun_path, F_OK) == 0) {
+        state_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+        if (state_fd < 0) {
+            perror("[Camera Service] socket");
+            return -1;
+        }
+    
+        if (connect(state_fd, (struct sockaddr *)&camera_state_addr, sizeof(struct sockaddr_un)) < 0) {
+            perror("[Camera Service] connect");
+            close(state_fd);
+            return -1;
+        }
+    }
+
+    // 写入 STARTED 状态
+    send_state(state_fd, SERVICE_STARTED);
 
     /* 建立 socket */
     int server_fd;
@@ -174,21 +178,33 @@ int camera_service(int pipe) {
         perror("[Camera Service] bind");
         goto error1;
     }
-
+    
     if (listen(server_fd, 5) < 0) {
         perror("[Camera Service] listen");
-        goto error1;
+        goto error2;
     }
+
+    /* 初始化摄像头 */
+    camera_init(&camera, 1);
+    camera_set_pixelfmt(&camera, CAMERA_PIX_FMT_RGB565);
+    camera_set_res(&camera, 800, 480);
+    camera_set_fps(&camera, 30);
+    if (camera_open(&camera) < 0)
+        goto error2;
+    if (camera_sync_fmt(&camera) < 0)
+        goto error3;
+    if (camera_sync_fps(&camera) < 0)
+        goto error3;
+    if (camera_prepare_buffer(&camera, 3) < 0)
+        goto error3;
 
     /* 创建共享内存，让后续摄像头数据可以被客户程序使用 */
     if (camera_shm_create(&camera) < 0)
-        goto error1;
+        goto error3;
 
-    /* 初始化就绪，将就绪状态写入管道 */
-    if (pipe_ready(pipe, 1) < 0) {
-        goto error2;
-    }
-    
+    // 服务进入正式运行状态
+    send_state(state_fd, SERVICE_RUNNING);
+
     int client_fd;
     pthread_t stream_thread;
 
@@ -278,21 +294,26 @@ int camera_service(int pipe) {
     }
 
     camera_shm_destroy(&camera);
-    close(server_fd);
-    unlink(CAMERA_SOCK_PATH);
     camera_close(&camera);
+
+    // 服务程序进入停止（结束）态
+    send_state(state_fd, SERVICE_STOPPED);
+
+    unlink(CAMERA_SOCK_PATH);
+    close(server_fd);
+    if (state_fd > 0)
+        close(state_fd);
 
     return 0;
 
 error3:
-    close(client_fd);
+    camera_close(&camera);
 error2:
-    camera_shm_destroy(&camera);
+    unlink(CAMERA_SOCK_PATH);
 error1:
     close(server_fd);
-    unlink(CAMERA_SOCK_PATH);
 error:
-    camera_close(&camera);
-    pipe_ready(pipe, 0);
+    if (state_fd > 0)
+        close(state_fd);
     return -1;
 }

@@ -7,6 +7,7 @@
 #include "video_utils.h"
 #include "sensor_client.h"
 #include "system_monitor.h"
+#include "service_manager.h"
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -21,6 +22,12 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+
+/* 保存web服务程序状态的 UDS 地址 */
+const struct sockaddr_un web_state_addr = {
+    .sun_family = AF_UNIX,
+    .sun_path = "/tmp/webst.sock"
+};
 
 #define WEB_PORT    16767
 #define WEB_API_MAX_LEN  64
@@ -466,7 +473,7 @@ static void *display_routine(void *arg) {
 
 // 压缩事务，由 stream 管理线程处理
 static void *compress_routine(void *arg) {
-    struct stream_manager *stream_manager = arg;
+    struct stream_manager *manager = arg;
 
     /* 连接本地 camera_service */
     struct camera_client cclient;
@@ -486,8 +493,8 @@ static void *compress_routine(void *arg) {
     unsigned char *buf_565 = NULL;
     unsigned char *buf_888 = NULL;
     size_t len_888 = 0;
-    stream_manager->buf_jpeg = NULL;
-    stream_manager->len_jpeg = 0;
+    manager->buf_jpeg = NULL;
+    manager->len_jpeg = 0;
 
     buf_565 = malloc(header.frame_size);
     if (!buf_565) {
@@ -518,32 +525,32 @@ static void *compress_routine(void *arg) {
                                    header.height,
                                    header.bytesperline);
 
-            pthread_mutex_lock(&stream_manager->frame_mutex);
+            pthread_mutex_lock(&manager->frame_mutex);
 
-            if (stream_manager->buf_jpeg) {
-                free(stream_manager->buf_jpeg);
-                stream_manager->buf_jpeg = NULL;
-                stream_manager->len_jpeg = 0;
+            if (manager->buf_jpeg) {
+                free(manager->buf_jpeg);
+                manager->buf_jpeg = NULL;
+                manager->len_jpeg = 0;
             }
-            image_to_jpeg(&stream_manager->buf_jpeg, 
-                          &stream_manager->len_jpeg,
+            image_to_jpeg(&manager->buf_jpeg, 
+                          &manager->len_jpeg,
                           buf_888,
                           header.width,
                           header.height);
 
-            pthread_mutex_unlock(&stream_manager->frame_mutex);
-            pthread_cond_broadcast(&stream_manager->frame_cond);
+            pthread_mutex_unlock(&manager->frame_mutex);
+            pthread_cond_broadcast(&manager->frame_cond);
         }
         
         usleep(16000);  // 以 60 帧的标准检查
     }
-    pthread_cond_broadcast(&stream_manager->frame_cond);
+    pthread_cond_broadcast(&manager->frame_cond);
 
     camera_client_close(&cclient);
-    if (stream_manager->buf_jpeg) {
-        free(stream_manager->buf_jpeg);
-        stream_manager->buf_jpeg = NULL;
-        stream_manager->len_jpeg = 0;
+    if (manager->buf_jpeg) {
+        free(manager->buf_jpeg);
+        manager->buf_jpeg = NULL;
+        manager->len_jpeg = 0;
     }
     free(buf_888);
     free(buf_565);
@@ -568,12 +575,12 @@ static void *upload_routine(void *arg) {
         if (exit_requested)
             break;
         
-        pthread_mutex_lock(&stream_manager->frame_mutex);
+        pthread_mutex_lock(&manager->frame_mutex);
 
-        pthread_cleanup_push(mutex_cleanup, &stream_manager->frame_mutex);
+        pthread_cleanup_push(mutex_cleanup, &manager->frame_mutex);
 
         // pthread_cond_wait 属于取消点，如果不用 cleanup 函数来解锁，那么线程就会带着锁未被解开而结束，容易死锁
-        pthread_cond_wait(&stream_manager->frame_cond, &stream_manager->frame_mutex);
+        pthread_cond_wait(&manager->frame_cond, &manager->frame_mutex);
         
         // 新帧到来，复制一份，因为 http_jpeg_frame 在 send 时会阻塞，如果持有锁，那么可能造成死锁
         frame_size = manager->len_jpeg;
@@ -581,19 +588,19 @@ static void *upload_routine(void *arg) {
             char *temp = realloc(frame_buf, frame_size);
 
             if (temp == NULL) {
-                pthread_mutex_unlock(&stream_manager->frame_mutex);
+                pthread_mutex_unlock(&manager->frame_mutex);
                 break;
             }
 
             frame_buf = temp;
             frame_capacity = frame_size;
         }
-        memcpy(frame_buf, stream_manager->buf_jpeg, frame_size);
+        memcpy(frame_buf, manager->buf_jpeg, frame_size);
 
         pthread_cleanup_pop(1);
 
         // 有了 pop 弹出 clean 函数进行解锁，这里不需要再解锁了
-        // pthread_mutex_unlock(&stream_manager->frame_mutex);
+        // pthread_mutex_unlock(&manager->frame_mutex);
 
         // 发送 jpeg 帧数据
         if (http_jpeg_frame(sclient->fd, frame_buf, frame_size) < 0) {
@@ -607,21 +614,12 @@ static void *upload_routine(void *arg) {
     return NULL;
 }
 
-static int pipe_ready(int fd, const int ready) {
-    if (fd >= 0) {
-        char res = ready;
-        if (write(fd, &res, 1) != 1) {
-            perror("[Sensor Service] ready notify");
-            return -1;
-        }
-        close(fd);
-        fd = -1;
-    }
-
-    return 0;
+static inline void send_state(int fd, const enum service_state state) {
+    if (fd > 0)
+        send_all(fd, &state, sizeof(int));
 }
 
-int web_service(int pipe) {
+int web_service(void *arg) {
     /* 针对流客户关闭：
      * 流客户关闭 socket 时，如果还有连接，会发送 FIN 报文给服务端
      * FIN、RST 这些 TCP 协议层的报文 accept 不会接收到，而是由内核直接处理
@@ -646,12 +644,32 @@ int web_service(int pipe) {
         return -1;
     }
 
+    /* 状态 socket */
+    int state_fd = -1;
+
+    if (access(web_state_addr.sun_path, F_OK) == 0) {
+        state_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+        if (state_fd < 0) {
+            perror("[Web Service] socket");
+            return -1;
+        }
+    
+        if (connect(state_fd, (struct sockaddr *)&web_state_addr, sizeof(struct sockaddr_un)) < 0) {
+            perror("[Web Service] connect");
+            close(state_fd);
+            return -1;
+        }
+    }
+
+    // 写入 STARTED 状态
+    send_state(state_fd, SERVICE_STARTED);
+
     /* web 服务端初始化 */
     /* 创建 socket */
     server_fd = socket(AF_INET, SOCK_STREAM, 0);  // TCP
     if (server_fd < 0) {
         perror("[Web Service] socket");
-        return -1;
+        goto error;
     }
 
     /* 绑定 IP */
@@ -665,24 +683,24 @@ int web_service(int pipe) {
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR,
                 &opt, sizeof(opt)) < 0) {
         perror("[Web Service] setsockopt");
-        goto error;
+        goto error1;
     }
     if (bind(server_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         perror("[Web Service] bind");
-        goto error;
+        goto error1;
     }
 
     /* 开启监听 */
     if (listen(server_fd, 5) < 0) {
         perror("[Web Service] listen");
-        goto error;
+        goto error1;
     }
 
     /* 连接本地摄像头服务 */
     camera_client_init(&web_cclient);
     if (camera_client_open(&web_cclient) < 0) {
         fprintf(stderr, "[Web Service] Error: camera_client_open\r\n");
-        goto error;
+        goto error1;
     }
 
     /* 连接本地传感器服务 */
@@ -691,20 +709,18 @@ int web_service(int pipe) {
     /* 开启系统监测 */
     if (system_monitor_init() < 0) {
         fprintf(stderr, "[Web Service] Error: system_monitor_init\r\n");
-        goto error1;
+        goto error2;
     }
 
     /* 管理 fb 设备 */
     display_init(&disp, 0);
     if (display_open(&disp) < 0) {
         fprintf(stderr, "[Web Service] Error: display_open\r\n");
-        goto error2;
-    }
-
-    /* 初始化就绪，将就绪状态写入管道 */
-    if (pipe_ready(pipe, 1) < 0) {
         goto error3;
     }
+
+    // 服务进入正式运行状态
+    send_state(state_fd, SERVICE_RUNNING);
 
     int client_fd = -1;
 
@@ -727,6 +743,7 @@ int web_service(int pipe) {
 
     if (stream_manager) {
         stream_manager_destroy(stream_manager);
+        stream_manager = NULL;
     }
 
     if (displaying) {
@@ -737,18 +754,25 @@ int web_service(int pipe) {
     display_close(&disp);
     system_monitor_close();
     camera_client_close(&web_cclient);
+
+    // 服务程序进入停止（结束）态
+    send_state(state_fd, SERVICE_STOPPED);
+
     close(server_fd);
+    if (state_fd > 0)
+        close(state_fd);
 
     return 0;
 
+
 error3:
-    display_close(&disp);
-error2:
     system_monitor_close();
-error1:
+error2:
     camera_client_close(&web_cclient);
-error:
+error1:
     close(server_fd);
-    pipe_ready(pipe, 0);
+error:
+    if (state_fd > 0)
+        close(state_fd);
     return -1;
 }
