@@ -17,7 +17,6 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <signal.h>
-#include <poll.h>
 #include <pthread.h>
 #include <string.h>
 #include <stdlib.h>
@@ -31,11 +30,6 @@ const struct sockaddr_un web_state_addr = {
 
 #define WEB_PORT    16767
 #define WEB_API_MAX_LEN  64
-
-enum http_result {
-    HTTP_CLOSE = 0,
-    HTTP_TRANSFER = 1
-};
 
 /* 全局变量定义 */
 int server_fd = -1;
@@ -199,11 +193,23 @@ void sensor_response_to_json(struct sensor_response *response, char *buf, size_t
         buf[n] = '\0';
 }
 
-static enum http_result http_request_process(int client_fd) {
+static int http_request_process() {
+    int client_fd = accept(server_fd, NULL, NULL);
+    if (client_fd < 0) {
+        if (errno == EINTR) {
+            if (exit_requested)
+                return 0;
+        }
+
+        perror("[Web Service] accept");
+        return -1;    
+    }
+
     char request[4096];
     ssize_t n = recv(client_fd, request, sizeof(request) - 1, 0);
     if (n <= 0) {
-        return HTTP_CLOSE;
+        close(client_fd);
+        return 0;
     }
     request[n] = 0;
 
@@ -237,13 +243,13 @@ static enum http_result http_request_process(int client_fd) {
         } else if (http_path_match(target, "/api/camera/streamon")) {
             if (stream_manager == NULL) {
                 fprintf(stderr, "[Web Service] Warning: /api/camera/start must be sent before /api/camera/streamon\r\n");
-                return HTTP_CLOSE;
+                goto close;
             }
 
             char *id_str = strstr(target, "?id=");
             if (!id_str) {
                 fprintf(stderr, "[Web Service] Error: no id appended at target on request of /api/camera/streamon\r\n");
-                return HTTP_CLOSE;
+                goto close;
             }
             id_str += 4;
 
@@ -251,26 +257,26 @@ static enum http_result http_request_process(int client_fd) {
 
             if (!id_len) {
                 fprintf(stderr, "[Web Service] Error: invalid stream id\r\n");
-                return HTTP_CLOSE;
+                goto close;
             }
 
             // 加入 stream_manager 后由其释放
             struct stream_client *sclient = stream_client_create(client_fd, upload_routine);
             if (!sclient) {
                 fprintf(stderr, "[Web Service] Error: stream_client_create\r\n");
-                return HTTP_CLOSE;
+                goto close;
             }
 
             strncpy(sclient->id, id_str, id_len);
 
             if (stream_client_add(stream_manager, sclient) < 0) {
                 fprintf(stderr, "[Web Service] Error: stream_client_add\r\n");
-                free(sclient);
-                return HTTP_CLOSE;
+                stream_client_destroy(sclient);
+                goto close;
             }
 
             // 开启/关闭 视频流的请求属于长连接
-            return HTTP_TRANSFER;
+            return 0;
         } else if (http_path_match(target, "/api/sensor/data")) {
             struct sensor_response resp;
             if (sensor_client_command(&web_sclient, SENSOR_CMD_DATA, &resp) == 0) {
@@ -369,23 +375,23 @@ static enum http_result http_request_process(int client_fd) {
             strcpy(status_text, "OK");
             
             struct stream_client *sclient = stream_find_client_by_id(stream_manager, id);
-            if (!sclient)
-                goto send;
-
-            stream_client_destroy(sclient);
+            if (sclient)
+                stream_client_destroy(sclient);
         } else {
             status_code = 404;
             strcpy(status_text, "Not Found");
         }
         break;
+
     default:
-        break;
+        goto close;
     }
 
 send:
     http_send_response(client_fd, status_code, status_text, "application/json", body);
-
-    return HTTP_CLOSE;
+close:
+    close(client_fd);
+    return 0;
 }
 
 static void http_mjpeg_header(int fd) {
@@ -623,7 +629,7 @@ int web_service(void *arg) {
     /* 针对流客户关闭：
      * 流客户关闭 socket 时，如果还有连接，会发送 FIN 报文给服务端
      * FIN、RST 这些 TCP 协议层的报文 accept 不会接收到，而是由内核直接处理
-     * 接收到 FIN 之后，如果再 send 会超时，发送 SIGPIPE 信号
+     * 接收到 FIN 之后，upload_routine 再 send 会超时，发送 SIGPIPE 信号
      * SIGPIPE 的默认行为会让该进程终止。体现就是整个程序卡死了
      */
     struct sigaction sa_pipe = {0};
@@ -722,23 +728,11 @@ int web_service(void *arg) {
     // 服务进入正式运行状态
     send_state(state_fd, SERVICE_RUNNING);
 
-    int client_fd = -1;
-
     while (!exit_requested) {
-        client_fd = accept(server_fd, NULL, NULL);
-        if (client_fd < 0) {
-            if (errno == EINTR) {
-                if (exit_requested)
-                    break;
-            }
-
-            perror("[Web Service] accept");
-            continue;    
+        if (http_request_process() < 0) {
+            fprintf(stderr, "[Web Service] Error: http_request_process\r\n");
+            break;
         }
-
-        // 短连接由主线程自己关闭，长连接由对应线程关闭
-        if (http_request_process(client_fd) == HTTP_CLOSE)
-            close(client_fd);
     }
 
     if (stream_manager) {

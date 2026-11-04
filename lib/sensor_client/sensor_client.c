@@ -13,7 +13,7 @@ int sensor_client_command(struct sensor_client *client,
                           enum sensor_command command,
                           struct sensor_response *resp) {
     /* camera service 采用的短连接，即一次请求一次连接，所以客户端同样采用短连接 */
-
+                            
     /* 创建 socket */
     int sock_fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (sock_fd < 0) {

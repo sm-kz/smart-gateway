@@ -81,7 +81,7 @@ async function camera_streamoff_button_clicked() {
 
     // 发送关闭流客户端的报文
     try {
-        await fetch(server_ip + api_post_camera_streamoff, {
+        const response = await fetch(server_ip + api_post_camera_streamoff, {
             method: "POST",
             headers: {
                 "Content-Type": "text/plain"

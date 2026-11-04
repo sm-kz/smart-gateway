@@ -10,8 +10,6 @@
 #include <stdio.h>
 #include <errno.h>
 #include <pthread.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 #include <sys/mman.h>
 #include <poll.h>
 #include <signal.h>
@@ -122,6 +120,60 @@ exit:
     pthread_exit(NULL);
 }
 
+static int camera_request_proecess(int server_fd, struct camera_response *resp) {
+    if (server_fd < 0 || !resp)
+        return -1;
+
+    int client_fd = accept(server_fd, NULL, NULL);
+    if (client_fd < 0) {
+        if (errno == EINTR) {
+            if (exit_requested)
+                return 0;
+            }
+        perror("[Camera Service] accept");
+        return -1;    
+    }
+
+    /* 接收 */
+    struct camera_request req;
+    int ret;
+    ret = camera_recv_requeset(client_fd, &req);
+
+    resp->magic = CAMERA_MAGIC;
+    resp->version = CAMERA_VERSION;
+    resp->command = req.command;
+    resp->result = ret;
+
+    /* 响应 */
+    switch(req.command) {
+    case CAMERA_CMD_START:
+        camera_service_status = CAMERA_SERVICE_STREAMING;
+        break;
+    case CAMERA_CMD_STOP:
+        camera_service_status = CAMERA_SERVICE_READY;
+        break;
+    case CAMERA_CMD_STATUS:
+        resp->data.status.width = camera.width;
+        resp->data.status.height = camera.height;
+        resp->data.status.fps = camera.fps;
+        resp->data.status.pixelformat = camera.pixelformat;
+        break;
+    default:
+        break;
+    }
+
+    resp->data.status.state = camera_service_status;
+    
+    if (send_all(client_fd, resp, sizeof(*resp)) < 0) {
+        perror("[Camera Service] send");
+        close(client_fd);
+        return -1;
+    }
+
+    close(client_fd);
+    return 0;
+}
+
 static inline void send_state(int fd, const enum service_state state) {
     if (fd > 0)
         send_all(fd, &state, sizeof(int));
@@ -205,59 +257,16 @@ int camera_service(void *arg) {
     // 服务进入正式运行状态
     send_state(state_fd, SERVICE_RUNNING);
 
-    int client_fd;
     pthread_t stream_thread;
 
     while (!exit_requested) {
-        // 阻塞等待客户端连接
-        client_fd = accept(server_fd, NULL, NULL);
-        if (client_fd < 0) {
-            if (errno == EINTR) {
-                if (exit_requested)
-                    break;
-                }
-            perror("[Camera Service] accept");
-            continue;    
-        }
-
-        /* 接收 */
-        struct camera_request req;
-        int ret;
-        ret = camera_recv_requeset(client_fd, &req);
-
-        struct camera_response resp = {0};
-        resp.magic = CAMERA_MAGIC;
-        resp.version = CAMERA_VERSION;
-        resp.command = req.command;
-        resp.result = ret;
-
         // 记录旧状态，避免重复开启或关闭
         int old_state = camera_service_status;
 
-        /* 响应 */
-        switch(req.command) {
-        case CAMERA_CMD_START:
-            camera_service_status = CAMERA_SERVICE_STREAMING;
+        struct camera_response resp = {0};
+        if (camera_request_proecess(server_fd, &resp) < 0) {
+            fprintf(stderr, "[Camera Service] Error: camera_request_proecess\r\n");
             break;
-        case CAMERA_CMD_STOP:
-            camera_service_status = CAMERA_SERVICE_READY;
-            break;
-        case CAMERA_CMD_STATUS:
-            resp.data.status.width = camera.width;
-            resp.data.status.height = camera.height;
-            resp.data.status.fps = camera.fps;
-            resp.data.status.pixelformat = camera.pixelformat;
-            break;
-        default:
-            break;
-        }
-
-        resp.data.status.state = camera_service_status;
-        
-        if (send_all(client_fd, &resp, sizeof(resp)) < 0) {
-            perror("[Camera Service] send");
-            close(client_fd);
-            continue;
         }
 
         // 线程处理
@@ -266,8 +275,7 @@ int camera_service(void *arg) {
                 // 开启视频流
                 camera_stream_on(&camera);
                 if (pthread_create(&stream_thread, NULL, camera_service_routine, &camera) != 0) {
-                    fprintf(stderr, "[Camera Service] Error: pthread_create failed\r\n");
-                    close(client_fd);
+                    fprintf(stderr, "[Camera Service] Error: pthread_create\r\n");
                     continue;
                 }
                 stream_thread_valid = 1;
@@ -278,8 +286,6 @@ int camera_service(void *arg) {
                 camera_stream_off(&camera);
             }
         }
-
-        close(client_fd);
     }
 
     /* 清理工作，仅针对 SIGTERM，对 SIGKILL 无效 */

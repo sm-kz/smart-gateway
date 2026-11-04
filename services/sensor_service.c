@@ -474,6 +474,55 @@ void *sample_routine(void *arg) {
     return NULL;
 }
 
+static int sensor_request_process(int server_fd, struct sensor_response *resp) {
+    if (server_fd < 0 || !resp)
+        return -1;
+
+    int client_fd = accept(server_fd, NULL, NULL);
+    if (client_fd < 0) {
+        if (errno == EINTR) {
+            if (exit_requested)
+                return 0;
+        }
+        perror("[Sensor Service] accept");
+        return -1;
+    }
+
+    struct sensor_request req = {0};
+    int ret;
+    ret = sensor_recv_requeset(client_fd, &req);
+
+    resp->magic = SENSOR_MAGIC;
+    resp->version = SENSOR_VERSION;
+    resp->command = req.command;
+    resp->result = ret;
+
+    /* 无设备状态控制接口 */
+    resp->state = sensor_state;
+
+    /* 根据指令执行响应的操作 */
+    switch (req.command)
+    {
+    case SENSOR_CMD_DATA:
+        pthread_mutex_lock(&mutex);
+        resp->data = private_sdata;
+        pthread_mutex_unlock(&mutex);
+        break;
+
+    default:
+        break;
+    }
+
+    if (send_all(client_fd, resp, sizeof(*resp)) < 0) {
+        perror("[Sensor Service] send");
+        close(client_fd);
+        return -1;
+    }
+
+    close(client_fd);
+    return 0;
+}
+
 static inline void send_state(int fd, const enum service_state state) {
     if (fd > 0)
         send_all(fd, &state, sizeof(int));
@@ -554,52 +603,12 @@ int sensor_service(void *arg) {
     // 服务进入正式运行状态
     send_state(state_fd, SERVICE_RUNNING);
 
-    int client_fd;
-
     while (!exit_requested) {
-        client_fd = accept(server_fd, NULL, NULL);
-        if (client_fd < 0) {
-            if (errno == EINTR) {
-                if (exit_requested)
-                    break;
-            }
-            perror("[Sensor Service] accept");
-            continue;
-        }
-
-        struct sensor_request req = {0};
-        int ret;
-        ret = sensor_recv_requeset(client_fd, &req);
-
         struct sensor_response resp = {0};
-        resp.magic = SENSOR_MAGIC;
-        resp.version = SENSOR_VERSION;
-        resp.command = req.command;
-        resp.result = ret;
-
-        /* 无设备状态控制接口 */
-        resp.state = sensor_state;
-
-        /* 根据指令执行响应的操作 */
-        switch (req.command)
-        {
-        case SENSOR_CMD_DATA:
-            pthread_mutex_lock(&mutex);
-            resp.data = private_sdata;
-            pthread_mutex_unlock(&mutex);
-            break;
-
-        default:
+        if (sensor_request_process(server_fd, &resp) < 0) {
+            fprintf(stderr, "[Sensor Service] Error: sensor_request_process\r\n");
             break;
         }
-
-        if (send_all(client_fd, &resp, sizeof(resp)) < 0) {
-            perror("[Sensor Service] send");
-            close(client_fd);
-            continue;
-        }
-
-        close(client_fd);
     }
 
     pthread_cancel(sample_pid);
