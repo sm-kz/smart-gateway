@@ -356,8 +356,9 @@ void *services_state_check_routine(void *arg) {
             }
 
             if (now - alive_records[i] > ALIVE_TIMEOUT) {
-                fprintf(stderr, "All services stopped for %s being not alive\r\n", serv->name);
+                fprintf(stderr, "All services restarted for %s being not alive\r\n", serv->name);
                 _stop_services();
+                start_services();
                 return NULL;
             }
         }

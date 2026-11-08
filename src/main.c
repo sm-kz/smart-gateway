@@ -64,18 +64,7 @@ int main(int argc, char **argv) {
 
     start_services();
 
-    while(!exit_requested) {
-        // 主进程阻塞检查僵尸进程
-        pid_t ret = waitpid(-1, NULL, 0);
-
-        if (ret < 0) {
-            if (errno == EINTR)
-                continue;
-
-            perror("waitpid");
-            break;
-        }
-    }
+    while(!exit_requested);
 
     stop_services();
 
