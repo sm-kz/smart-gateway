@@ -9,10 +9,17 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <pthread.h>
+#include <time.h>
+
+#define ALIVE_TIMEOUT       30000   // ms
 
 static size_t services_count = 0;
 static struct service_struct *services[MAX_SERVICES_COUNT] = {0};
 static int dependency_graph[MAX_SERVICES_COUNT][MAX_SERVICES_COUNT] = {{0}};
+static int sorted[MAX_SERVICES_COUNT];
+
+static pthread_t state_check_pid;
 
 static int get_available_service_slot() {
     int i;
@@ -242,11 +249,9 @@ error:
 }
 
 static void stop_service(struct service_struct *serv) {
-    printf("%s stopped\r\n", serv->name);
-
     if (serv->pid < 0)
         return;
-
+    
     kill(serv->pid, SIGTERM);
     waitpid(serv->pid, NULL, 0);
     serv->pid = -1;
@@ -261,9 +266,9 @@ static void stop_service(struct service_struct *serv) {
     printf("%s stopped\r\n", serv->name);
 }
 
-int start_services() {
-    int sorted[MAX_SERVICES_COUNT];
+void *services_state_check_routine(void *arg);
 
+int start_services() {
     if (sort_by_graph(sorted)) {
         fprintf(stderr, "start_services failed, please make sure no services in circular dependency\r\n");
         return -1;
@@ -278,6 +283,12 @@ int start_services() {
         }
     }
 
+    // 开启服务状态检查事务
+    if (pthread_create(&state_check_pid, NULL, services_state_check_routine, NULL)) {
+        fprintf(stderr, "pthread_create\r\n");
+        goto rollback;
+    }
+
     return 0;
 
 rollback:
@@ -288,14 +299,69 @@ rollback:
     return -1;
 }
 
-void stop_services() {
-    int sorted[MAX_SERVICES_COUNT];
-
-    sort_by_graph(sorted);
-
+void _stop_services() {
     int i;
+
     for (i = services_count - 1; i >= 0; --i) {
         struct service_struct *serv = services[sorted[i]];
         stop_service(serv);
+    }
+}
+
+void stop_services() {
+    pthread_cancel(state_check_pid);
+    pthread_join(state_check_pid, NULL);
+
+    _stop_services();
+}
+
+unsigned long long get_time_ms()
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (unsigned long long)ts.tv_sec * 1000ULL
+         + ts.tv_nsec / 1000000ULL;
+}
+
+void *services_state_check_routine(void *arg) {
+    static unsigned long long alive_records[MAX_SERVICES_COUNT];    // 记录上次发送 alive 状态的时间戳
+    int i;
+
+    int now = get_time_ms();
+    for (i = 0; i < services_count; ++i) {
+        alive_records[i] = now;
+    }
+    
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+    while (1) {
+        now = get_time_ms();
+
+        for (i = 0; i < services_count; ++i) {
+            struct service_struct *serv = services[sorted[i]];
+            get_service_state(serv);
+
+            switch (serv->state)
+            {
+            case SERVICE_ALIVE:
+                alive_records[i] = now;    
+                continue;
+
+            case SERVICE_FAILED:
+                fprintf(stderr, "All services stopped for %s's failure\r\n", serv->name);
+                _stop_services();
+                return NULL;
+
+            default:
+                break;
+            }
+
+            if (now - alive_records[i] > ALIVE_TIMEOUT) {
+                fprintf(stderr, "All services stopped for %s being not alive\r\n", serv->name);
+                _stop_services();
+                return NULL;
+            }
+        }
+
+        sleep(1);
     }
 }

@@ -21,6 +21,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <poll.h>
 
 /* 保存web服务程序状态的 UDS 地址 */
 const struct sockaddr_un web_state_addr = {
@@ -30,6 +31,8 @@ const struct sockaddr_un web_state_addr = {
 
 #define WEB_PORT    16767
 #define WEB_API_MAX_LEN  64
+
+#define HEARTBEAT_INTERVAL      3000    // ms
 
 /* 全局变量定义 */
 int server_fd = -1;
@@ -625,6 +628,8 @@ static inline void send_state(int fd, const enum service_state state) {
         send_all(fd, &state, sizeof(int));
 }
 
+extern unsigned long long get_time_ms();
+
 int web_service(void *arg) {
     /* 针对流客户关闭：
      * 流客户关闭 socket 时，如果还有连接，会发送 FIN 报文给服务端
@@ -728,11 +733,42 @@ int web_service(void *arg) {
     // 服务进入正式运行状态
     send_state(state_fd, SERVICE_RUNNING);
 
+    unsigned long long now = 0, last = 0;
+
     while (!exit_requested) {
-        if (http_request_process() < 0) {
-            fprintf(stderr, "[Web Service] Error: http_request_process\r\n");
+        now = get_time_ms();
+        long timeout = HEARTBEAT_INTERVAL - (now - last);
+        if (timeout < 0)
+            timeout = 0;
+
+        // 检查是否有服务请求需要处理
+        struct pollfd pfd = {
+            .fd = server_fd,
+            .events = POLLIN
+        };
+        int ret = poll(&pfd, 1, timeout);
+
+        if (ret < 0) {
+            if (errno == EINTR)
+                continue;
+            
+            perror("[Web Service] poll");
             break;
         }
+
+        if (ret > 0 && (pfd.revents & POLLIN)) {
+            if (http_request_process() < 0) {
+                fprintf(stderr, "[Web Service] Error: http_request_process\r\n");
+                break;
+            }
+        }
+        
+        // 周期性发送存活状态
+        now = get_time_ms();
+        if (now - last >= HEARTBEAT_INTERVAL) {
+            send_state(state_fd, SERVICE_ALIVE);
+            last = now;
+        }        
     }
 
     if (stream_manager) {

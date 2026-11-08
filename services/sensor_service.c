@@ -18,12 +18,15 @@
 #include <pthread.h>
 #include <time.h>
 #include <signal.h>
+#include <poll.h>
 
 /* 保存传感器服务程序状态的 UDS 地址 */
 const struct sockaddr_un sensor_state_addr = {
     .sun_family = AF_UNIX,
     .sun_path = "/tmp/senst.sock"
 };
+
+#define HEARTBEAT_INTERVAL      3000    // ms
 
 static volatile sig_atomic_t exit_requested = 0;
 static void sigterm_handler(int sig) {
@@ -528,6 +531,8 @@ static inline void send_state(int fd, const enum service_state state) {
         send_all(fd, &state, sizeof(int));
 }
 
+extern unsigned long long get_time_ms();
+
 int sensor_service(void *arg) {
     /* 初始化 SIGINT 信号处理 */
     struct sigaction sa = {0};
@@ -603,11 +608,42 @@ int sensor_service(void *arg) {
     // 服务进入正式运行状态
     send_state(state_fd, SERVICE_RUNNING);
 
+    unsigned long long now = 0, last = 0;
+
     while (!exit_requested) {
-        struct sensor_response resp = {0};
-        if (sensor_request_process(server_fd, &resp) < 0) {
-            fprintf(stderr, "[Sensor Service] Error: sensor_request_process\r\n");
+        now = get_time_ms();
+        long timeout = HEARTBEAT_INTERVAL - (now - last);
+        if (timeout < 0)
+            timeout = 0;
+
+        // 检查是否有服务请求需要处理
+        struct pollfd pfd = {
+            .fd = server_fd,
+            .events = POLLIN
+        };
+        int ret = poll(&pfd, 1, timeout);
+
+        if (ret < 0) {
+            if (errno == EINTR)
+                continue;
+            
+            perror("[Sensor Service] poll");
             break;
+        }
+
+        if (ret > 0 && (pfd.revents & POLLIN)) {
+            struct sensor_response resp = {0};
+            if (sensor_request_process(server_fd, &resp) < 0) {
+                fprintf(stderr, "[Sensor Service] Error: sensor_request_process\r\n");
+                break;
+            }
+        }
+        
+        // 周期性发送存活状态
+        now = get_time_ms();
+        if (now - last >= HEARTBEAT_INTERVAL) {
+            send_state(state_fd, SERVICE_ALIVE);
+            last = now;
         }
     }
 

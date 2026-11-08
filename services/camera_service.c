@@ -13,6 +13,7 @@
 #include <sys/mman.h>
 #include <poll.h>
 #include <signal.h>
+#include <time.h>
 
 /* 保存摄像头服务程序状态的 UDS 地址 */
 const struct sockaddr_un camera_state_addr = {
@@ -24,6 +25,8 @@ static struct camera camera;
 static volatile sig_atomic_t camera_service_status = CAMERA_SERVICE_READY;
 static volatile sig_atomic_t stream_thread_valid = 0;
 static volatile sig_atomic_t exit_requested = 0;
+
+#define HEARTBEAT_INTERVAL      3000    // ms
 
 /* 进程正式被 kill 前释放资源 */
 static void sigterm_handler (int sig) {
@@ -179,6 +182,8 @@ static inline void send_state(int fd, const enum service_state state) {
         send_all(fd, &state, sizeof(int));
 }
 
+extern unsigned long long get_time_ms();
+
 int camera_service(void *arg) {
     /* 初始化 SIGINT 信号处理 */
     struct sigaction sa = {0};
@@ -258,15 +263,38 @@ int camera_service(void *arg) {
     send_state(state_fd, SERVICE_RUNNING);
 
     pthread_t stream_thread;
+    unsigned long long now = 0, last = 0;
 
     while (!exit_requested) {
         // 记录旧状态，避免重复开启或关闭
         int old_state = camera_service_status;
 
-        struct camera_response resp = {0};
-        if (camera_request_proecess(server_fd, &resp) < 0) {
-            fprintf(stderr, "[Camera Service] Error: camera_request_proecess\r\n");
+        now = get_time_ms();
+        long timeout = HEARTBEAT_INTERVAL - (now - last);
+        if (timeout < 0)
+            timeout = 0;
+
+        // 检查是否有服务请求需要处理
+        struct pollfd pfd = {
+            .fd = server_fd,
+            .events = POLLIN
+        };
+        int ret = poll(&pfd, 1, timeout);
+
+        if (ret < 0) {
+            if (errno == EINTR)
+                continue;
+            
+            perror("[Camera Service] poll");
             break;
+        }
+
+        if (ret > 0 && (pfd.revents & POLLIN)) {
+            struct camera_response resp = {0};
+            if (camera_request_proecess(server_fd, &resp) < 0) {
+                fprintf(stderr, "[Camera Service] Error: camera_request_proecess\r\n");
+                break;
+            }
         }
 
         // 线程处理
@@ -285,6 +313,13 @@ int camera_service(void *arg) {
                 // 关闭视频流
                 camera_stream_off(&camera);
             }
+        }
+
+        // 周期性发送存活状态
+        now = get_time_ms();
+        if (now - last >= HEARTBEAT_INTERVAL) {
+            send_state(state_fd, SERVICE_ALIVE);
+            last = now;
         }
     }
 

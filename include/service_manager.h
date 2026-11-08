@@ -13,6 +13,7 @@ enum service_state {
     SERVICE_STARTED,
     SERVICE_RUNNING,
     SERVICE_STOPPED,
+    SERVICE_ALIVE,
     SERVICE_FAILED
 };
 
@@ -41,5 +42,6 @@ int register_service(struct service_struct *serv);
 void unregister_service(struct service_struct *serv);
 int start_services();
 void stop_services();
+
 
 #endif
